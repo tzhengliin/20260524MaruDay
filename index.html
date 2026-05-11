@@ -8,29 +8,17 @@
   </head>
   <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
-      <h1 class="text-2xl font-bold text-center text-slate-800 mb-4">🏆 競速記分台 (多賽事切換版)</h1>
+      <h1 class="text-2xl font-bold text-center text-slate-800 mb-4">🏆 競速記分台 (多賽事自動版)</h1>
 
-      <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-6 space-y-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">📁 1. 載入 config.txt 設定檔</label>
-          <input
-            type="file"
-            id="configFile"
-            accept=".txt"
-            class="block w-full text-sm text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">🎯 2. 選擇比賽項目</label>
-          <select
-            id="competitionSelect"
-            disabled
-            class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 disabled:bg-slate-100 cursor-pointer"
-          >
-            <option value="">請先載入上方設定檔</option>
-          </select>
-        </div>
+      <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-6">
+        <label class="block text-xs font-bold text-slate-600 mb-1">🎯 當前比賽項目</label>
+        <select
+          id="competitionSelect"
+          disabled
+          class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 disabled:bg-slate-100 cursor-pointer font-medium text-slate-700"
+        >
+          <option value="">設定檔載入中...</option>
+        </select>
       </div>
 
       <div id="statusBox" class="hidden mb-4 p-3 rounded text-sm text-center font-medium"></div>
@@ -42,7 +30,7 @@
             type="text"
             id="competitorId"
             maxlength="2"
-            placeholder="載入設定檔後啟用"
+            placeholder="設定檔載入後啟用"
             disabled
             class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-lg disabled:bg-slate-100 disabled:cursor-not-allowed"
           />
@@ -60,7 +48,7 @@
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">第一轉成績</label>
+          <label class="block text-sm font-bold text-slate-700 mb-1">第一轉成績 (自動除以100)</label>
           <input
             type="text"
             id="solve1"
@@ -71,7 +59,7 @@
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">第二轉成績</label>
+          <label class="block text-sm font-bold text-slate-700 mb-1">第二轉成績 (自動除以100)</label>
           <input
             type="text"
             id="solve2"
@@ -92,7 +80,6 @@
       let isFetching = false;
       let lastFetchedId = "";
 
-      const fileInput = document.getElementById("configFile");
       const compSelect = document.getElementById("competitionSelect");
       const idInput = document.getElementById("competitorId");
       const nameInput = document.getElementById("competitorName");
@@ -100,6 +87,11 @@
       const solve2Input = document.getElementById("solve2");
       const submitBtn = document.getElementById("submitBtn");
       const statusBox = document.getElementById("statusBox");
+
+      // 網頁載入後，全自動啟動設定檔讀取
+      window.onload = () => {
+        loadConfigFile();
+      };
 
       function showStatus(message, type = "info") {
         statusBox.className = "mb-4 p-3 rounded text-sm text-center font-medium block";
@@ -109,14 +101,16 @@
         statusBox.innerText = message;
       }
 
-      // --- 讀取設定檔與解析 ---
-      fileInput.addEventListener("change", function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
+      // --- 自動讀取 GitHub 同目錄下的 config.txt ---
+      async function loadConfigFile() {
+        showStatus("正在讀取賽事設定檔...", "info");
+        try {
+          // 加上時間戳記 (?t=...) 強制 GitHub Pages 不使用舊快取，抓取最新檔案
+          const response = await fetch("config.txt?t=" + new Date().getTime());
+          if (!response.ok) throw new Error("找不到 config.txt");
 
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const lines = e.target.result.split(/\r?\n/);
+          const text = await response.text();
+          const lines = text.split(/\r?\n/);
           compSelect.innerHTML = "";
           let validCount = 0;
 
@@ -124,7 +118,7 @@
             const parts = line.split(",");
             if (parts.length >= 2) {
               const name = parts[0].trim();
-              const url = parts.slice(1).join(",").trim(); // 確保網址完整
+              const url = parts.slice(1).join(",").trim(); // 支援網址內可能含有的逗號
               if (name && url) {
                 const opt = document.createElement("option");
                 opt.value = url;
@@ -137,19 +131,21 @@
 
           if (validCount > 0) {
             compSelect.disabled = false;
-            updateSelectedCompetition();
+            updateSelectedCompetition(); // 自動綁定第一筆賽事並解鎖編號欄位
             showStatus(`成功載入 ${validCount} 筆賽事設定！`, "success");
           } else {
-            compSelect.innerHTML = '<option value="">檔案解析失敗，請確認格式</option>';
+            compSelect.innerHTML = '<option value="">檔案內容為空或格式錯誤</option>';
             compSelect.disabled = true;
-            idInput.disabled = true;
-            showStatus("檔案內容格式不符 (需為: 名稱,網址)", "error");
+            showStatus("設定檔內容不符 (需為: 比賽名稱,網址)", "error");
           }
-        };
-        reader.readAsText(file);
-      });
+        } catch (error) {
+          compSelect.innerHTML = '<option value="">無法讀取 config.txt</option>';
+          compSelect.disabled = true;
+          showStatus("讀取失敗，請確認 config.txt 是否已上傳至同目錄", "error");
+        }
+      }
 
-      // 切換下拉選單更新當前 URL
+      // 當工作人員手動切換下拉選單時觸發更新
       compSelect.addEventListener("change", updateSelectedCompetition);
 
       function updateSelectedCompetition() {
@@ -158,9 +154,15 @@
           idInput.disabled = false;
           idInput.placeholder = "輸入 2 位數字自動查詢";
           idInput.focus();
-          // 重置當前輸入狀態
+
+          // 切換賽事時，重置當前欄位狀態
           idInput.value = "";
           nameInput.value = "";
+          solve1Input.value = "";
+          solve2Input.value = "";
+          solve1Input.disabled = true;
+          solve2Input.disabled = true;
+          submitBtn.disabled = true;
           lastFetchedId = "";
         }
       }
@@ -177,10 +179,7 @@
 
       // --- API：查詢姓名 ---
       async function fetchName() {
-        if (!currentScriptUrl) {
-          showStatus("請先選擇比賽項目！", "error");
-          return;
-        }
+        if (!currentScriptUrl) return;
         const id = idInput.value.trim();
         if (id.length !== 2 || isFetching) return;
 
