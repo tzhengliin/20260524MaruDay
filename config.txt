@@ -1,2 +1,2 @@
-2026 媽祖盃小比賽 初賽,https://script.google.com/macros/s/AKfycbzpn9IBMotC5RbQVZNWesUyYyb5HtE93Gps1hncm0soNudLrWh78Ewz03og9wRUaoOB/exec
-2026 媽祖盃小比賽 複賽,https://script.google.com/macros/s/AKfycbzpn9IBMotC5RbQVZNWesUyYyb5HtE93Gps1hncm0soNudLrWh78Ewz03og9wRUaoOB/exec
+2026 媽祖盃小比賽 初賽,https://script.google.com/macros/s/AKfycbzkSE4cdosfdHkFfmWrsU9EoaCcJ5WwIl5bChEtMl0kSnEnUL7a3__Vb4xd_fbVDy-T/exec
+2026 媽祖盃小比賽 複賽,https://script.google.com/macros/s/AKfycbzkSE4cdosfdHkFfmWrsU9EoaCcJ5WwIl5bChEtMl0kSnEnUL7a3__Vb4xd_fbVDy-T/exec

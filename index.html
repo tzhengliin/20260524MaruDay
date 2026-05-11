@@ -3,75 +3,82 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>魔術方塊比賽計分系統</title>
+    <title>魔術方塊比賽系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
-      <h1 class="text-2xl font-bold text-center text-slate-800 mb-4">🏆 競速記分台 (多賽事自動版)</h1>
-
-      <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-6">
-        <label class="block text-xs font-bold text-slate-600 mb-1">🎯 當前比賽項目</label>
-        <select
-          id="competitionSelect"
-          disabled
-          class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 disabled:bg-slate-100 cursor-pointer font-medium text-slate-700"
-        >
-          <option value="">設定檔載入中...</option>
-        </select>
+  <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
+    <div class="max-w-2xl mx-auto">
+      <div class="flex gap-2 mb-4">
+        <button onclick="switchPage('input')" id="navInput" class="flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white">⌨️ 輸入成績</button>
+        <button onclick="switchPage('rank')" id="navRank" class="flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600">🏆 成績排名</button>
       </div>
 
-      <div id="statusBox" class="hidden mb-4 p-3 rounded text-sm text-center font-medium"></div>
+      <div id="pageInput" class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-sm">Step 1</span> 選擇賽事</h2>
+        <select id="competitionSelect" disabled class="w-full mb-6 px-3 py-2 bg-slate-50 border border-slate-300 rounded focus:outline-none focus:border-blue-500">
+          <option value="">載入中...</option>
+        </select>
 
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">選手編號 (2位數)</label>
-          <input
-            type="text"
-            id="competitorId"
-            maxlength="2"
-            placeholder="設定檔載入後啟用"
+        <div id="statusBox" class="hidden mb-4 p-3 rounded text-sm text-center font-medium"></div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-bold mb-1 text-slate-600">選手編號 (2位數)</label>
+            <input
+              type="text"
+              id="competitorId"
+              maxlength="2"
+              placeholder="輸入編號自動查詢"
+              disabled
+              class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-lg disabled:bg-slate-100 uppercase"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-bold mb-1 text-slate-600">選手姓名</label>
+            <input type="text" id="competitorName" readonly placeholder="等待查詢..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-slate-500 font-bold" />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-bold mb-1 text-slate-600">第一轉 (例:954)</label>
+              <input type="text" id="solve1" disabled class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold mb-1 text-slate-600">第二轉 (例:1012)</label>
+              <input type="text" id="solve2" disabled class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50" />
+            </div>
+          </div>
+          <button
+            onclick="submitScores()"
+            id="submitBtn"
             disabled
-            class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-lg disabled:bg-slate-100 disabled:cursor-not-allowed"
-          />
+            class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-lg transition shadow-md disabled:bg-slate-300"
+          >
+            確認送出 (Enter)
+          </button>
+        </div>
+      </div>
+
+      <div id="pageRank" class="hidden bg-white p-4 rounded-xl shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold">🏆 即時排名</h2>
+          <button onclick="fetchRankings()" class="text-blue-600 text-sm font-bold hover:underline">🔄 刷新數據</button>
         </div>
 
-        <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">選手姓名</label>
-          <input
-            type="text"
-            id="competitorName"
-            readonly
-            placeholder="等待輸入編號..."
-            class="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded text-slate-600 cursor-not-allowed text-lg font-bold"
-          />
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b-2 border-slate-100 text-slate-500">
+                <th class="py-2">編號</th>
+                <th class="py-2">姓名</th>
+                <th class="py-2">轉1</th>
+                <th class="py-2">轉2</th>
+                <th class="py-2 text-blue-600">最快</th>
+              </tr>
+            </thead>
+            <tbody id="rankTableBody"></tbody>
+          </table>
         </div>
-
-        <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">第一轉成績 (自動除以100)</label>
-          <input
-            type="text"
-            id="solve1"
-            placeholder="例: 954 自動轉 9.54"
-            disabled
-            class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-slate-50 font-mono text-lg"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">第二轉成績 (自動除以100)</label>
-          <input
-            type="text"
-            id="solve2"
-            placeholder="例: 1012 自動轉 10.12"
-            disabled
-            class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-slate-50 font-mono text-lg"
-          />
-        </div>
-
-        <button onclick="submitScores()" id="submitBtn" disabled class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold py-3 rounded transition shadow">
-          送出成績 (按 Enter)
-        </button>
+        <div id="rankLoader" class="text-center py-10 text-slate-400">讀取中...</div>
       </div>
     </div>
 
@@ -88,222 +95,180 @@
       const submitBtn = document.getElementById("submitBtn");
       const statusBox = document.getElementById("statusBox");
 
-      // 網頁載入後，全自動啟動設定檔讀取
-      window.onload = () => {
-        loadConfigFile();
-      };
+      window.onload = loadConfigFile;
 
-      function showStatus(message, type = "info") {
-        statusBox.className = "mb-4 p-3 rounded text-sm text-center font-medium block";
-        if (type === "success") statusBox.classList.add("bg-emerald-100", "text-emerald-800");
-        else if (type === "error") statusBox.classList.add("bg-red-100", "text-red-800");
-        else statusBox.classList.add("bg-blue-100", "text-blue-800");
-        statusBox.innerText = message;
+      // --- 頁面切換邏輯 ---
+      function switchPage(page) {
+        const pInput = document.getElementById("pageInput");
+        const pRank = document.getElementById("pageRank");
+        const navInput = document.getElementById("navInput");
+        const navRank = document.getElementById("navRank");
+
+        if (page === "input") {
+          pInput.classList.remove("hidden");
+          pRank.classList.add("hidden");
+          navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white";
+          navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600";
+          setTimeout(() => idInput.focus(), 100);
+        } else {
+          pInput.classList.add("hidden");
+          pRank.classList.remove("hidden");
+          navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600";
+          navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white";
+          fetchRankings();
+        }
       }
 
-      // --- 自動讀取 GitHub 同目錄下的 config.txt ---
+      // --- 自動讀取 config.txt ---
       async function loadConfigFile() {
-        showStatus("正在讀取賽事設定檔...", "info");
         try {
-          // 加上時間戳記 (?t=...) 強制 GitHub Pages 不使用舊快取，抓取最新檔案
           const response = await fetch("config.txt?t=" + new Date().getTime());
-          if (!response.ok) throw new Error("找不到 config.txt");
-
           const text = await response.text();
           const lines = text.split(/\r?\n/);
           compSelect.innerHTML = "";
-          let validCount = 0;
-
+          let count = 0;
           lines.forEach((line) => {
-            const parts = line.split(",");
-            if (parts.length >= 2) {
-              const name = parts[0].trim();
-              const url = parts.slice(1).join(",").trim(); // 支援網址內可能含有的逗號
-              if (name && url) {
-                const opt = document.createElement("option");
-                opt.value = url;
-                opt.textContent = name;
-                compSelect.appendChild(opt);
-                validCount++;
-              }
+            const [name, url] = line.split(",");
+            if (name && url) {
+              const opt = document.createElement("option");
+              opt.value = url.trim();
+              opt.textContent = name.trim();
+              compSelect.appendChild(opt);
+              count++;
             }
           });
-
-          if (validCount > 0) {
+          if (count > 0) {
             compSelect.disabled = false;
-            updateSelectedCompetition(); // 自動綁定第一筆賽事並解鎖編號欄位
-            showStatus(`成功載入 ${validCount} 筆賽事設定！`, "success");
-          } else {
-            compSelect.innerHTML = '<option value="">檔案內容為空或格式錯誤</option>';
-            compSelect.disabled = true;
-            showStatus("設定檔內容不符 (需為: 比賽名稱,網址)", "error");
+            updateConfig();
           }
-        } catch (error) {
-          compSelect.innerHTML = '<option value="">無法讀取 config.txt</option>';
-          compSelect.disabled = true;
-          showStatus("讀取失敗，請確認 config.txt 是否已上傳至同目錄", "error");
+        } catch (e) {
+          alert("無法讀取 config.txt");
         }
       }
 
-      // 當工作人員手動切換下拉選單時觸發更新
-      compSelect.addEventListener("change", updateSelectedCompetition);
-
-      function updateSelectedCompetition() {
+      compSelect.onchange = updateConfig;
+      function updateConfig() {
         currentScriptUrl = compSelect.value;
-        if (currentScriptUrl) {
-          idInput.disabled = false;
-          idInput.placeholder = "輸入 2 位數字自動查詢";
-          idInput.focus();
-
-          // 切換賽事時，重置當前欄位狀態
-          idInput.value = "";
-          nameInput.value = "";
-          solve1Input.value = "";
-          solve2Input.value = "";
-          solve1Input.disabled = true;
-          solve2Input.disabled = true;
-          submitBtn.disabled = true;
-          lastFetchedId = "";
-        }
+        idInput.disabled = false;
+        idInput.focus();
       }
 
-      // --- 成績格式化 ---
+      // --- 格式化成績 ---
       function formatScore(val) {
         val = val.trim();
         if (!val) return "";
-        if (/^\d+$/.test(val)) {
-          return (parseInt(val, 10) / 100).toFixed(2);
-        }
+        if (/^\d+$/.test(val)) return (parseInt(val, 10) / 100).toFixed(2);
         return val.toUpperCase();
       }
 
-      // --- API：查詢姓名 ---
+      // --- 查詢選手 ---
+      idInput.oninput = () => {
+        if (idInput.value.length === 2) fetchName();
+      };
       async function fetchName() {
-        if (!currentScriptUrl) return;
         const id = idInput.value.trim();
         if (id.length !== 2 || isFetching) return;
-
         isFetching = true;
-        showStatus("正在查詢選手資料...", "info");
         nameInput.value = "查詢中...";
-
         try {
-          const response = await fetch(`${currentScriptUrl}?action=getName&id=${encodeURIComponent(id)}`);
-          const result = await response.json();
-
+          const res = await fetch(`${currentScriptUrl}?action=getName&id=${id}`);
+          const result = await res.json();
           if (result.success) {
             nameInput.value = result.name;
             lastFetchedId = id;
-            showStatus(`目前場次：${compSelect.options[compSelect.selectedIndex].text}`, "success");
-
-            solve1Input.disabled = false;
-            solve2Input.disabled = false;
-            submitBtn.disabled = false;
+            solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = false;
             solve1Input.focus();
           } else {
-            nameInput.value = "";
-            lastFetchedId = "";
-            solve1Input.disabled = true;
-            solve2Input.disabled = true;
-            submitBtn.disabled = true;
-            showStatus(result.message, "error");
-            idInput.focus();
+            nameInput.value = result.message;
           }
-        } catch (error) {
-          showStatus("連線失敗，請檢查網址或網路狀態", "error");
-          nameInput.value = "";
         } finally {
           isFetching = false;
         }
       }
 
-      // --- API：寫入成績 ---
+      // --- 送出成績 ---
       async function submitScores() {
-        const id = idInput.value.trim();
         const t1 = formatScore(solve1Input.value);
         const t2 = formatScore(solve2Input.value);
-
-        solve1Input.value = t1;
-        solve2Input.value = t2;
-
-        if (!t1 || !t2) {
-          showStatus("請完整填寫成績！", "error");
-          if (!t1) solve1Input.focus();
-          else solve2Input.focus();
-          return;
-        }
+        if (!t1 || !t2) return;
 
         submitBtn.disabled = true;
         submitBtn.innerText = "寫入中...";
-        showStatus("正在寫入成績...", "info");
-        solve1Input.disabled = true;
-        solve2Input.disabled = true;
 
         try {
-          const response = await fetch(`${currentScriptUrl}?action=updateScore&id=${encodeURIComponent(id)}&t1=${encodeURIComponent(t1)}&t2=${encodeURIComponent(t2)}`);
-          const result = await response.json();
-
+          const res = await fetch(`${currentScriptUrl}?action=updateScore&id=${idInput.value}&t1=${t1}&t2=${t2}`);
+          const result = await res.json();
           if (result.success) {
-            showStatus(`🎉 ${lastFetchedId}號 ${nameInput.value} 成績寫入成功！`, "success");
-            idInput.value = "";
-            nameInput.value = "";
-            solve1Input.value = "";
-            solve2Input.value = "";
-            lastFetchedId = "";
+            idInput.value = nameInput.value = solve1Input.value = solve2Input.value = "";
+            solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = true;
             idInput.focus();
-          } else {
-            showStatus(result.message, "error");
-            solve1Input.disabled = false;
-            solve2Input.disabled = false;
-            submitBtn.disabled = false;
+            alert("寫入成功！");
           }
-        } catch (error) {
-          showStatus("寫入失敗，請檢查連線狀態", "error");
-          solve1Input.disabled = false;
-          solve2Input.disabled = false;
-          submitBtn.disabled = false;
         } finally {
-          submitBtn.innerText = "送出成績 (按 Enter)";
+          submitBtn.innerText = "確認送出 (Enter)";
         }
       }
 
-      // --- 全自動鍵盤導航邏輯 ---
-      idInput.addEventListener("input", function () {
-        const val = idInput.value.trim();
-        if (val.length === 2 && val !== lastFetchedId && !isFetching) {
-          fetchName();
-        }
-      });
+      // --- 獲取排名數據 ---
+      async function fetchRankings() {
+        const tbody = document.getElementById("rankTableBody");
+        const loader = document.getElementById("rankLoader");
+        if (!currentScriptUrl) return;
 
-      idInput.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          const val = idInput.value.trim();
-          if (val.length === 2 && val === lastFetchedId) {
-            solve1Input.focus();
-          } else if (val.length === 2 && !isFetching) {
-            fetchName();
+        tbody.innerHTML = "";
+        loader.classList.remove("hidden");
+
+        try {
+          const res = await fetch(`${currentScriptUrl}?action=getRankings`);
+          const result = await res.json();
+
+          if (result.success) {
+            // 資料處理與計算
+            let list = result.data.map((row) => {
+              const s1 = parseFloat(row[5]) || Infinity; // F欄: 初賽1
+              const s2 = parseFloat(row[6]) || Infinity; // G欄: 初賽2
+              const best = Math.min(s1, s2);
+              return {
+                id: row[0],
+                name: row[1],
+                t1: row[5] || "--",
+                t2: row[6] || "--",
+                best: best === Infinity ? 999999 : best,
+              };
+            });
+
+            // 依最快秒數排序
+            list.sort((a, b) => a.best - b.best);
+
+            // 渲染表格
+            list.forEach((item) => {
+              const tr = document.createElement("tr");
+              tr.className = "border-b border-slate-50 hover:bg-slate-50";
+              const bestDisplay = item.best === 999999 ? "--" : item.best.toFixed(2);
+              tr.innerHTML = `
+              <td class="py-3 font-mono">${item.id}</td>
+              <td class="py-3 font-bold">${item.name}</td>
+              <td class="py-3 text-slate-400 font-mono">${item.t1}</td>
+              <td class="py-3 text-slate-400 font-mono">${item.t2}</td>
+              <td class="py-3 font-mono text-blue-600 font-bold">${bestDisplay}</td>
+            `;
+              tbody.appendChild(tr);
+            });
           }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          loader.classList.add("hidden");
         }
-      });
+      }
 
-      solve1Input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          solve1Input.value = formatScore(solve1Input.value);
-          solve2Input.focus();
-        }
-      });
-      solve1Input.addEventListener("blur", () => (solve1Input.value = formatScore(solve1Input.value)));
-
-      solve2Input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          solve2Input.value = formatScore(solve2Input.value);
-          submitScores();
-        }
-      });
-      solve2Input.addEventListener("blur", () => (solve2Input.value = formatScore(solve2Input.value)));
+      // 鍵盤導航
+      solve1Input.onkeydown = (e) => {
+        if (e.key === "Enter") solve2Input.focus();
+      };
+      solve2Input.onkeydown = (e) => {
+        if (e.key === "Enter") submitScores();
+      };
     </script>
   </body>
 </html>
