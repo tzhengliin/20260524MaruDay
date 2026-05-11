@@ -8,7 +8,30 @@
   </head>
   <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
-      <h1 class="text-2xl font-bold text-center text-slate-800 mb-6">🏆 競速記分台 (快速輸入版)</h1>
+      <h1 class="text-2xl font-bold text-center text-slate-800 mb-4">🏆 競速記分台 (多賽事切換版)</h1>
+
+      <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-6 space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">📁 1. 載入 config.txt 設定檔</label>
+          <input
+            type="file"
+            id="configFile"
+            accept=".txt"
+            class="block w-full text-sm text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">🎯 2. 選擇比賽項目</label>
+          <select
+            id="competitionSelect"
+            disabled
+            class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 disabled:bg-slate-100 cursor-pointer"
+          >
+            <option value="">請先載入上方設定檔</option>
+          </select>
+        </div>
+      </div>
 
       <div id="statusBox" class="hidden mb-4 p-3 rounded text-sm text-center font-medium"></div>
 
@@ -19,8 +42,9 @@
             type="text"
             id="competitorId"
             maxlength="2"
-            placeholder="輸入 2 位數字自動查詢 (例: 01)"
-            class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-lg"
+            placeholder="載入設定檔後啟用"
+            disabled
+            class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-lg disabled:bg-slate-100 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -36,22 +60,22 @@
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">第一轉成績 (自動除以100)</label>
+          <label class="block text-sm font-bold text-slate-700 mb-1">第一轉成績</label>
           <input
             type="text"
             id="solve1"
-            placeholder="例: 954 自動轉 9.54 (可輸入 DNF)"
+            placeholder="例: 954 自動轉 9.54"
             disabled
             class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-slate-50 font-mono text-lg"
           />
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">第二轉成績 (自動除以100)</label>
+          <label class="block text-sm font-bold text-slate-700 mb-1">第二轉成績</label>
           <input
             type="text"
             id="solve2"
-            placeholder="例: 1012 自動轉 10.12 (可輸入 DNF)"
+            placeholder="例: 1012 自動轉 10.12"
             disabled
             class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-slate-50 font-mono text-lg"
           />
@@ -64,21 +88,18 @@
     </div>
 
     <script>
-      // !!! 請將下方網址替換成你的 Google Apps Script 網頁應用程式 URL !!!
-      const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpn9IBMotC5RbQVZNWesUyYyb5HtE93Gps1hncm0soNudLrWh78Ewz03og9wRUaoOB/exec";
+      let currentScriptUrl = "";
+      let isFetching = false;
+      let lastFetchedId = "";
 
+      const fileInput = document.getElementById("configFile");
+      const compSelect = document.getElementById("competitionSelect");
       const idInput = document.getElementById("competitorId");
       const nameInput = document.getElementById("competitorName");
       const solve1Input = document.getElementById("solve1");
       const solve2Input = document.getElementById("solve2");
       const submitBtn = document.getElementById("submitBtn");
       const statusBox = document.getElementById("statusBox");
-
-      let isFetching = false;
-      let lastFetchedId = ""; // 紀錄上一次查詢成功的編號，避免重複打 API
-
-      // 頁面載入後預設鎖定輸入焦點在編號欄
-      window.onload = () => idInput.focus();
 
       function showStatus(message, type = "info") {
         statusBox.className = "mb-4 p-3 rounded text-sm text-center font-medium block";
@@ -88,20 +109,78 @@
         statusBox.innerText = message;
       }
 
-      // 自動格式化成績函數 (整數/100，含有小數點或 DNF 則保持原樣)
+      // --- 讀取設定檔與解析 ---
+      fileInput.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const lines = e.target.result.split(/\r?\n/);
+          compSelect.innerHTML = "";
+          let validCount = 0;
+
+          lines.forEach((line) => {
+            const parts = line.split(",");
+            if (parts.length >= 2) {
+              const name = parts[0].trim();
+              const url = parts.slice(1).join(",").trim(); // 確保網址完整
+              if (name && url) {
+                const opt = document.createElement("option");
+                opt.value = url;
+                opt.textContent = name;
+                compSelect.appendChild(opt);
+                validCount++;
+              }
+            }
+          });
+
+          if (validCount > 0) {
+            compSelect.disabled = false;
+            updateSelectedCompetition();
+            showStatus(`成功載入 ${validCount} 筆賽事設定！`, "success");
+          } else {
+            compSelect.innerHTML = '<option value="">檔案解析失敗，請確認格式</option>';
+            compSelect.disabled = true;
+            idInput.disabled = true;
+            showStatus("檔案內容格式不符 (需為: 名稱,網址)", "error");
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // 切換下拉選單更新當前 URL
+      compSelect.addEventListener("change", updateSelectedCompetition);
+
+      function updateSelectedCompetition() {
+        currentScriptUrl = compSelect.value;
+        if (currentScriptUrl) {
+          idInput.disabled = false;
+          idInput.placeholder = "輸入 2 位數字自動查詢";
+          idInput.focus();
+          // 重置當前輸入狀態
+          idInput.value = "";
+          nameInput.value = "";
+          lastFetchedId = "";
+        }
+      }
+
+      // --- 成績格式化 ---
       function formatScore(val) {
         val = val.trim();
         if (!val) return "";
-        // 檢查是否為純數字 (無小數點)
         if (/^\d+$/.test(val)) {
           return (parseInt(val, 10) / 100).toFixed(2);
         }
-        // 若已包含小數點或英文字母 (DNF/DNS)，轉大寫直接回傳
         return val.toUpperCase();
       }
 
-      // 查詢姓名 API 請求
+      // --- API：查詢姓名 ---
       async function fetchName() {
+        if (!currentScriptUrl) {
+          showStatus("請先選擇比賽項目！", "error");
+          return;
+        }
         const id = idInput.value.trim();
         if (id.length !== 2 || isFetching) return;
 
@@ -110,20 +189,17 @@
         nameInput.value = "查詢中...";
 
         try {
-          const response = await fetch(`${SCRIPT_URL}?action=getName&id=${encodeURIComponent(id)}`);
+          const response = await fetch(`${currentScriptUrl}?action=getName&id=${encodeURIComponent(id)}`);
           const result = await response.json();
 
           if (result.success) {
             nameInput.value = result.name;
             lastFetchedId = id;
-            showStatus(`選手：${result.name}`, "success");
+            showStatus(`目前場次：${compSelect.options[compSelect.selectedIndex].text}`, "success");
 
-            // 解鎖成績輸入框
             solve1Input.disabled = false;
             solve2Input.disabled = false;
             submitBtn.disabled = false;
-
-            // 自動將游標焦點跳至第一轉
             solve1Input.focus();
           } else {
             nameInput.value = "";
@@ -135,26 +211,24 @@
             idInput.focus();
           }
         } catch (error) {
-          showStatus("連線失敗，請檢查網路狀態", "error");
+          showStatus("連線失敗，請檢查網址或網路狀態", "error");
           nameInput.value = "";
         } finally {
           isFetching = false;
         }
       }
 
-      // 送出成績寫入試算表
+      // --- API：寫入成績 ---
       async function submitScores() {
         const id = idInput.value.trim();
-        // 送出前再次確保格式化正確
         const t1 = formatScore(solve1Input.value);
         const t2 = formatScore(solve2Input.value);
 
-        // 同步更新 UI 顯示轉換後的秒數
         solve1Input.value = t1;
         solve2Input.value = t2;
 
         if (!t1 || !t2) {
-          showStatus("請完整填寫第一轉與第二轉成績！", "error");
+          showStatus("請完整填寫成績！", "error");
           if (!t1) solve1Input.focus();
           else solve2Input.focus();
           return;
@@ -163,26 +237,20 @@
         submitBtn.disabled = true;
         submitBtn.innerText = "寫入中...";
         showStatus("正在寫入成績...", "info");
-
-        // 暫時鎖定輸入框避免重複送出
         solve1Input.disabled = true;
         solve2Input.disabled = true;
 
         try {
-          const response = await fetch(`${SCRIPT_URL}?action=updateScore&id=${encodeURIComponent(id)}&t1=${encodeURIComponent(t1)}&t2=${encodeURIComponent(t2)}`);
+          const response = await fetch(`${currentScriptUrl}?action=updateScore&id=${encodeURIComponent(id)}&t1=${encodeURIComponent(t1)}&t2=${encodeURIComponent(t2)}`);
           const result = await response.json();
 
           if (result.success) {
             showStatus(`🎉 ${lastFetchedId}號 ${nameInput.value} 成績寫入成功！`, "success");
-
-            // 清空表單，準備下一位
             idInput.value = "";
             nameInput.value = "";
             solve1Input.value = "";
             solve2Input.value = "";
             lastFetchedId = "";
-
-            // 焦點自動回到編號欄
             idInput.focus();
           } else {
             showStatus(result.message, "error");
@@ -200,9 +268,7 @@
         }
       }
 
-      // --- 事件監聽器 (全自動化鍵盤控制流程) ---
-
-      // 1. 編號輸入框監聽：輸入滿 2 位數自動觸發查詢
+      // --- 全自動鍵盤導航邏輯 ---
       idInput.addEventListener("input", function () {
         const val = idInput.value.trim();
         if (val.length === 2 && val !== lastFetchedId && !isFetching) {
@@ -210,12 +276,10 @@
         }
       });
 
-      // 處理習慣性按 Enter 鍵的防呆
       idInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
           const val = idInput.value.trim();
-          // 如果已經查詢成功，直接跳第一轉；否則觸發查詢
           if (val.length === 2 && val === lastFetchedId) {
             solve1Input.focus();
           } else if (val.length === 2 && !isFetching) {
@@ -224,7 +288,6 @@
         }
       });
 
-      // 2. 第一轉輸入框監聽：失焦或按 Enter 時格式化，並跳轉第二轉
       solve1Input.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
@@ -232,11 +295,8 @@
           solve2Input.focus();
         }
       });
-      solve1Input.addEventListener("blur", function () {
-        solve1Input.value = formatScore(solve1Input.value);
-      });
+      solve1Input.addEventListener("blur", () => (solve1Input.value = formatScore(solve1Input.value)));
 
-      // 3. 第二轉輸入框監聽：失焦格式化，按 Enter 直接送出
       solve2Input.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
@@ -244,9 +304,7 @@
           submitScores();
         }
       });
-      solve2Input.addEventListener("blur", function () {
-        solve2Input.value = formatScore(solve2Input.value);
-      });
+      solve2Input.addEventListener("blur", () => (solve2Input.value = formatScore(solve2Input.value)));
     </script>
   </body>
 </html>
