@@ -6,76 +6,82 @@
     <title>魔術方塊比賽系統 (極速按鈕防呆版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
+  <body class="bg-slate-100 min-h-screen p-3 md:p-4 font-sans text-slate-900">
     <div class="max-w-2xl mx-auto">
       <div class="flex gap-2 mb-4">
-        <button onclick="switchPage('input')" id="navInput" class="flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white">⌨️ 輸入成績</button>
-        <button onclick="switchPage('rank')" id="navRank" class="flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600">🏆 成績排名</button>
+        <button onclick="switchPage('input')" id="navInput" class="flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white text-sm md:text-base">⌨️ 輸入成績</button>
+        <button onclick="switchPage('rank')" id="navRank" class="flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600 text-sm md:text-base">🏆 成績排名</button>
       </div>
 
-      <div class="bg-white p-4 rounded-xl shadow-md mb-4 border-l-4 border-blue-600 space-y-3">
+      <div class="bg-white p-3.5 md:p-4 rounded-xl shadow-md mb-4 border-l-4 border-blue-600 space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-500 mb-1">🎯 選擇賽事項目</label>
-          <select id="competitionSelect" disabled class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 font-medium">
+          <select id="competitionSelect" disabled class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 font-medium">
             <option value="">設定檔載入中...</option>
           </select>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-500 mb-1">📁 選擇賽程階段</label>
           <div id="roundButtonsContainer" class="flex flex-wrap gap-2">
-            <span class="text-sm text-slate-400 py-1.5">請先選擇上方比賽</span>
+            <span class="text-xs text-slate-400 py-1.5">請先選擇上方比賽</span>
           </div>
         </div>
       </div>
 
       <div id="statusBox" class="hidden mb-4 p-3 rounded text-sm text-center font-medium shadow-sm"></div>
 
-      <div id="pageInput" class="bg-white p-6 rounded-xl shadow-lg">
-        <div class="flex justify-between items-center border-b pb-2 mb-4">
-          <div class="flex items-center gap-2">
-            <h2 class="text-lg font-bold text-slate-700">選手記分台</h2>
-            <span id="currentRoundBadge" class="text-xs bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded">--</span>
+      <div id="pageInput" class="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-4">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <h2 class="text-base md:text-lg font-bold text-slate-700">選手記分台</h2>
+            <span id="currentRoundBadge" class="text-xs bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded">--</span>
           </div>
-          <div class="flex gap-2">
-            <span id="queueStatus" class="hidden text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200 animate-pulse"> 背景同步中: 0 筆 </span>
-            <span id="cacheStatus" class="text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded font-bold border border-amber-200">名單未載入</span>
+          <div class="flex flex-wrap gap-1.5 ml-auto">
+            <span id="queueStatus" class="hidden text-[11px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold border border-blue-200 animate-pulse"> 背景同步: 0 </span>
+            <span id="cacheStatus" class="text-[11px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded font-bold border border-amber-200">名單未載入</span>
           </div>
         </div>
-        <div class="space-y-4">
+        <div class="space-y-3.5">
           <div>
-            <label class="block text-sm font-bold mb-1 text-slate-600">選手編號 (2位數)</label>
+            <label class="block text-xs md:text-sm font-bold mb-1 text-slate-600">選手編號 (2位數)</label>
             <input
               type="text"
               id="competitorId"
               maxlength="2"
               placeholder="等待名單快取後啟用..."
               disabled
-              class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-lg disabled:bg-slate-100 uppercase"
+              class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-base md:text-lg disabled:bg-slate-100 uppercase"
             />
           </div>
           <div>
-            <label class="block text-sm font-bold mb-1 text-slate-600">選手姓名</label>
-            <input type="text" id="competitorName" readonly placeholder="輸入編號瞬間帶出..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-slate-500 font-bold" />
+            <label class="block text-xs md:text-sm font-bold mb-1 text-slate-600">選手姓名</label>
+            <input
+              type="text"
+              id="competitorName"
+              readonly
+              placeholder="輸入編號瞬間帶出..."
+              class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-slate-500 font-bold text-sm md:text-base"
+            />
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-sm font-bold mb-1 text-slate-600">第一轉 (自動過濾雜訊)</label>
+              <label class="block text-xs font-bold mb-1 text-slate-600">第一轉 (過濾雜訊)</label>
               <input
                 type="text"
                 id="solve1"
                 disabled
-                class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50"
-                placeholder="例: 9/54 自動轉 9.54"
+                class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-sm md:text-lg disabled:bg-slate-50"
+                placeholder="例: 9/54"
               />
             </div>
             <div>
-              <label class="block text-sm font-bold mb-1 text-slate-600">第二轉 (自動過濾雜訊)</label>
+              <label class="block text-xs font-bold mb-1 text-slate-600">第二轉 (過濾雜訊)</label>
               <input
                 type="text"
                 id="solve2"
                 disabled
-                class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50"
-                placeholder="例: 1:03.23 轉 1:03.23"
+                class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-sm md:text-lg disabled:bg-slate-50"
+                placeholder="例: 1:03.23"
               />
             </div>
           </div>
@@ -83,43 +89,43 @@
             onclick="submitScores()"
             id="submitBtn"
             disabled
-            class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-lg transition shadow-md disabled:bg-slate-300"
+            class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-4 rounded-lg transition shadow-md disabled:bg-slate-300 text-sm md:text-base"
           >
             確認送出 (Enter)
           </button>
         </div>
       </div>
 
-      <div id="pageRank" class="hidden bg-white p-4 rounded-xl shadow-lg">
-        <div class="flex justify-between items-center mb-4 border-b pb-2">
-          <div class="flex items-center gap-2">
-            <h2 class="text-lg font-bold text-slate-700">即時排行榜 (含本地預覽)</h2>
-            <span id="rankRoundBadge" class="text-xs bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded">--</span>
+      <div id="pageRank" class="hidden bg-white p-3 md:p-4 rounded-xl shadow-lg">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <h2 class="text-sm md:text-base font-bold text-slate-700">排行榜預覽</h2>
+            <span id="rankRoundBadge" class="text-xs bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded">--</span>
           </div>
-          <button onclick="fetchRankings(true)" class="text-blue-600 text-sm font-bold hover:underline">🔄 強制同步雲端數據</button>
+          <button onclick="fetchRankings(true)" class="text-blue-600 text-xs font-bold hover:underline ml-auto">🔄 強制同步雲端</button>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
+        <div class="overflow-x-auto -mx-1 md:mx-0">
+          <table class="w-full text-left text-xs md:text-sm">
             <thead>
-              <tr class="border-b-2 border-slate-100 text-slate-500">
-                <th class="py-2">編號</th>
-                <th class="py-2">姓名</th>
-                <th class="py-2">轉1</th>
-                <th class="py-2">轉2</th>
-                <th class="py-2 text-blue-600">最快</th>
+              <tr class="border-b-2 border-slate-100 text-slate-400 text-[11px] md:text-xs">
+                <th class="py-2 pl-1 pr-0.5 w-7 md:w-10 text-center">編號</th>
+                <th class="py-2 px-1 text-left min-w-[4.5rem]">姓名</th>
+                <th class="py-2 px-1 text-center text-slate-400">第一轉</th>
+                <th class="py-2 px-1 text-center text-slate-400">第二轉</th>
+                <th class="py-2 pl-1 pr-2 text-blue-600 font-bold text-right min-w-[4rem]">最佳成績</th>
               </tr>
             </thead>
             <tbody id="rankTableBody"></tbody>
           </table>
         </div>
-        <div id="rankLoader" class="text-center py-10 text-slate-400">讀取資料中...</div>
+        <div id="rankLoader" class="text-center py-10 text-slate-400 text-xs">讀取資料中...</div>
       </div>
     </div>
 
     <script>
       let currentScriptUrl = "";
-      let currentSheetName = ""; // 追蹤目前選中的工作表
+      let currentSheetName = "";
       let lastFetchedId = "";
       let currentPage = "input";
       let pendingUploads = 0;
@@ -153,7 +159,7 @@
       function updateQueueBadge() {
         if (pendingUploads > 0) {
           queueStatus.classList.remove("hidden");
-          queueStatus.innerText = `背景上傳中: ${pendingUploads} 筆`;
+          queueStatus.innerText = `背景同步: ${pendingUploads}`;
         } else {
           queueStatus.classList.add("hidden");
         }
@@ -161,11 +167,11 @@
 
       function setCacheBadge(loaded) {
         if (loaded) {
-          cacheStatus.className = "text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-200";
-          cacheStatus.innerText = "⚡ 本地秒查啟用";
+          cacheStatus.className = "text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold border border-emerald-200";
+          cacheStatus.innerText = "⚡ 秒查啟用";
         } else {
-          cacheStatus.className = "text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded font-bold border border-amber-200";
-          cacheStatus.innerText = "載入快取中...";
+          cacheStatus.className = "text-[11px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded font-bold border border-amber-200";
+          cacheStatus.innerText = "快取中...";
         }
       }
 
@@ -179,21 +185,20 @@
         if (page === "input") {
           pInput.classList.remove("hidden");
           pRank.classList.add("hidden");
-          navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white";
-          navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600";
+          navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white text-sm md:text-base";
+          navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600 text-sm md:text-base";
           if (!idInput.disabled) setTimeout(() => idInput.focus(), 100);
         } else {
           pInput.classList.add("hidden");
           pRank.classList.remove("hidden");
-          navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600";
-          navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white";
+          navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600 text-sm md:text-base";
+          navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white text-sm md:text-base";
           renderRankings();
         }
       }
 
       async function loadConfigFile() {
         try {
-          // 注意：因為目前檔案已經在 keyin/ 目錄下，讀取同層級的 config.txt 即可
           const response = await fetch("config.txt?t=" + new Date().getTime());
           const text = await response.text();
           const lines = text.split(/\r?\n/);
@@ -215,17 +220,16 @@
         }
       }
 
-      // --- ★ 選擇賽事：動態建立回合按鈕 ---
       compSelect.onchange = async () => {
         currentScriptUrl = compSelect.value;
-        roundButtonsContainer.innerHTML = `<span class="text-sm text-slate-400 py-1.5">連線讀取賽程中...</span>`;
+        roundButtonsContainer.innerHTML = `<span class="text-xs text-slate-400 py-1.5">連線讀取賽程中...</span>`;
         idInput.disabled = true;
         competitorCache = {};
         setCacheBadge(false);
         currentSheetName = "";
 
         if (!currentScriptUrl) {
-          roundButtonsContainer.innerHTML = `<span class="text-sm text-slate-400 py-1.5">請先選擇上方比賽</span>`;
+          roundButtonsContainer.innerHTML = `<span class="text-xs text-slate-400 py-1.5">請先選擇上方比賽</span>`;
           return;
         }
 
@@ -240,44 +244,39 @@
 
             result.tabs.forEach((tabName) => {
               const btn = document.createElement("button");
-              // 過濾字首：將「成績_初賽」轉為乾淨的「初賽」
               btn.innerText = tabName.replace("成績_", "");
-              btn.className = "round-btn px-4 py-1.5 rounded-lg text-sm font-bold transition shadow-sm border";
+              btn.className = "round-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition shadow-sm border";
               btn.dataset.sheet = tabName;
               btn.onclick = () => selectRound(tabName);
               roundButtonsContainer.appendChild(btn);
             });
 
-            // 預設載入並點選第一個分頁按鈕
             selectRound(result.tabs[0]);
           } else {
-            roundButtonsContainer.innerHTML = `<span class="text-sm text-red-500 py-1.5">無有效成績分頁</span>`;
+            roundButtonsContainer.innerHTML = `<span class="text-xs text-red-500 py-1.5">無有效成績分頁</span>`;
             showStatus("找不到名稱為『成績_初賽/複賽/決賽』的分頁", "error");
           }
         } catch (e) {
-          roundButtonsContainer.innerHTML = `<span class="text-sm text-red-500 py-1.5">連線失敗</span>`;
+          roundButtonsContainer.innerHTML = `<span class="text-xs text-red-500 py-1.5">連線失敗</span>`;
           showStatus("無法連線至 Google Sheet", "error");
         }
       };
 
-      // --- ★ 按鈕選中連動邏輯 ---
       function selectRound(tabName) {
         currentSheetName = tabName;
         const cleanName = tabName.replace("成績_", "");
         currentRoundBadge.innerText = cleanName;
         rankRoundBadge.innerText = cleanName;
 
-        // 更新按鈕樣式切換
         const buttons = roundButtonsContainer.querySelectorAll(".round-btn");
         buttons.forEach((btn) => {
           if (btn.dataset.sheet === tabName) {
-            btn.className = "round-btn px-4 py-1.5 rounded-lg text-sm font-bold transition shadow-sm border border-blue-600 bg-blue-600 text-white";
+            btn.className = "round-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition shadow-sm border border-blue-600 bg-blue-600 text-white";
           } else {
-            btn.className = "round-btn px-4 py-1.5 rounded-lg text-sm font-bold transition shadow-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+            btn.className = "round-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition shadow-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
           }
         });
 
-        // 觸發整頁快取重載流程
         onRoundChange();
       }
 
@@ -292,7 +291,6 @@
         fetchRankings(false);
       }
 
-      // 自動過濾雜訊 + 支援分秒智慧格式化
       function formatScore(val) {
         val = val.trim();
         if (!val) return "";
@@ -383,7 +381,7 @@
 
             const cleanName = currentSheetName.replace("成績_", "");
             if (isManualRefresh) showStatus("雲端排行榜已完成同步！", "success");
-            else showStatus(`[${cleanName}] 準備就緒，具備雜訊自動過濾功能！`, "success");
+            else showStatus(`[${cleanName}] 準備就緒，具備雜訊過濾功能！`, "success");
 
             if (currentPage === "rank") renderRankings();
             else idInput.focus();
@@ -414,6 +412,7 @@
         }
       };
 
+      // 關鍵優化：套用緊密版型，確保姓名欄位具備 min-w-[4.5rem] 且強制單行顯示
       function renderRankings() {
         const tbody = document.getElementById("rankTableBody");
         tbody.innerHTML = "";
@@ -421,12 +420,12 @@
           const tr = document.createElement("tr");
           tr.className = "border-b border-slate-50 hover:bg-slate-50";
           tr.innerHTML = `
-          <td class="py-3 font-mono">${item.id}</td>
-          <td class="py-3 font-bold">${item.name}</td>
-          <td class="py-3 text-slate-400 font-mono">${item.t1}</td>
-          <td class="py-3 text-slate-400 font-mono">${item.t2}</td>
-          <td class="py-3 font-mono text-blue-600 font-bold">${item.bestDisplay}</td>
-        `;
+            <td class="py-2.5 pl-1 pr-0.5 font-mono text-slate-400 text-center text-xs md:text-sm">${item.id}</td>
+            <td class="py-2.5 px-1 font-bold text-slate-800 text-left whitespace-nowrap min-w-[4.5rem] tracking-tight">${item.name}</td>
+            <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t1}</td>
+            <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t2}</td>
+            <td class="py-2.5 pl-1 pr-2 font-mono text-blue-600 font-bold text-right text-xs md:text-sm tracking-tight">${item.bestDisplay}</td>
+          `;
           tbody.appendChild(tr);
         });
       }
@@ -487,7 +486,6 @@
           });
       }
 
-      // 鍵盤操作防呆
       idInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && idInput.value.length === 2 && competitorCache[idInput.value.trim()]) {
           e.preventDefault();

@@ -6,14 +6,14 @@
     <title>🏆 即時成績排行榜</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
+  <body class="bg-slate-100 min-h-screen p-3 md:p-4 font-sans text-slate-900">
     <div class="max-w-3xl mx-auto">
-      <div class="text-center mb-6 mt-2">
-        <h1 class="text-2xl font-black text-slate-800 tracking-wide">🏆 即時成績排行榜</h1>
-        <p class="text-xs text-slate-500 mt-1">Live Leaderboard</p>
+      <div class="text-center mb-5 mt-1 md:mt-2">
+        <h1 class="text-xl md:text-2xl font-black text-slate-800 tracking-wide flex items-center justify-center gap-1.5"><span>🏆</span> 即時成績排行榜</h1>
+        <p class="text-xs text-slate-500 mt-0.5">Live Leaderboard</p>
       </div>
 
-      <div class="bg-white p-4 rounded-xl shadow-md mb-4 border-t-4 border-blue-600 space-y-3">
+      <div class="bg-white p-3.5 md:p-4 rounded-xl shadow-md mb-4 border-t-4 border-blue-600 space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-500 mb-1">🎯 選擇賽事項目</label>
           <select id="competitionSelect" disabled class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
@@ -24,51 +24,51 @@
         <div>
           <label class="block text-xs font-bold text-slate-500 mb-1">📁 賽程階段</label>
           <div id="roundButtonsContainer" class="flex flex-wrap gap-2">
-            <span class="text-sm text-slate-400 py-1.5">請先選擇上方賽事</span>
+            <span class="text-xs md:text-sm text-slate-400 py-1.5">請先選擇上方賽事</span>
           </div>
         </div>
       </div>
 
       <div id="statusBox" class="hidden mb-4 p-3 rounded-lg text-sm text-center font-medium shadow-sm"></div>
 
-      <div class="bg-white p-4 rounded-xl shadow-lg">
-        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-bold text-slate-700">當前排行</span>
-            <span id="currentRoundLabel" class="text-xs bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded">--</span>
-            <span id="updateTimeDisplay" class="text-xs text-slate-400 ml-1">尚未載入</span>
+      <div class="bg-white p-3 md:p-4 rounded-xl shadow-lg">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="text-xs md:text-sm font-bold text-slate-700">當前排行</span>
+            <span id="currentRoundLabel" class="text-xs bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded">--</span>
+            <span id="updateTimeDisplay" class="text-[10px] md:text-xs text-slate-400 ml-0.5">尚未載入</span>
           </div>
-          <button onclick="fetchRankings(true)" class="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+          <button onclick="fetchRankings(true)" class="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ml-auto">
             <span>🔄 重新整理</span>
           </button>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
+        <div class="overflow-x-auto -mx-1 md:mx-0">
+          <table class="w-full text-left text-xs md:text-sm">
             <thead>
-              <tr class="border-b-2 border-slate-100 text-slate-400 text-xs">
-                <th class="py-2 w-12">名次</th>
-                <th class="py-2 w-12">編號</th>
-                <th class="py-2">姓名</th>
-                <th class="py-2 text-slate-400">第一轉</th>
-                <th class="py-2 text-slate-400">第二轉</th>
-                <th class="py-2 text-blue-600 font-bold text-right pr-2">最佳成績</th>
+              <tr class="border-b-2 border-slate-100 text-slate-400 text-[11px] md:text-xs">
+                <th class="py-2 pl-1 pr-0.5 w-9 md:w-12 text-center">名次</th>
+                <th class="py-2 px-1 w-7 md:w-10 text-center">編號</th>
+                <th class="py-2 px-1 text-left min-w-[4.5rem]">姓名</th>
+                <th class="py-2 px-1 text-center text-slate-400">第一轉</th>
+                <th class="py-2 px-1 text-center text-slate-400">第二轉</th>
+                <th class="py-2 pl-1 pr-2 text-blue-600 font-bold text-right min-w-[4rem]">最佳成績</th>
               </tr>
             </thead>
             <tbody id="rankTableBody">
               <tr>
-                <td colspan="6" class="text-center py-12 text-slate-400 text-sm">請於上方選擇賽程以查看排名</td>
+                <td colspan="6" class="text-center py-10 text-slate-400 text-xs">請於上方選擇賽程以查看排名</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div id="rankLoader" class="hidden text-center py-12 text-slate-400 text-sm animate-pulse">讀取雲端即時數據中...</div>
+        <div id="rankLoader" class="hidden text-center py-10 text-slate-400 text-xs animate-pulse">讀取雲端即時數據中...</div>
       </div>
     </div>
 
     <script>
       let currentScriptUrl = "";
-      let currentSheetName = ""; // 全域變數：追蹤目前選中的分頁名稱
+      let currentSheetName = "";
 
       const compSelect = document.getElementById("competitionSelect");
       const roundButtonsContainer = document.getElementById("roundButtonsContainer");
@@ -76,7 +76,6 @@
       const updateTimeDisplay = document.getElementById("updateTimeDisplay");
       const currentRoundLabel = document.getElementById("currentRoundLabel");
 
-      // 取得網址參數 (一次性消耗)
       const urlParams = new URLSearchParams(window.location.search);
       let targetComp = urlParams.get("comp");
       let targetRound = urlParams.get("round");
@@ -92,7 +91,6 @@
         if (type !== "error") setTimeout(() => statusBox.classList.add("hidden"), 4000);
       }
 
-      // 讀取賽事清單
       async function loadConfigFile() {
         try {
           const response = await fetch("keyin/config.txt?t=" + new Date().getTime());
@@ -114,7 +112,6 @@
 
           if (count > 0) {
             compSelect.disabled = false;
-            // 自動比對網址參數選擇賽事
             if (targetComp) {
               for (let opt of compSelect.options) {
                 if (opt.text.includes(targetComp)) {
@@ -133,14 +130,13 @@
 
       compSelect.onchange = () => loadTabs();
 
-      // 載入賽程分頁並「動態建立按鈕」
       async function loadTabs() {
         currentScriptUrl = compSelect.value;
-        roundButtonsContainer.innerHTML = `<span class="text-sm text-slate-400 py-1.5">連線讀取賽程中...</span>`;
+        roundButtonsContainer.innerHTML = `<span class="text-xs text-slate-400 py-1.5">連線讀取賽程中...</span>`;
         currentSheetName = "";
 
         if (!currentScriptUrl) {
-          roundButtonsContainer.innerHTML = `<span class="text-sm text-slate-400 py-1.5">請先選擇上方賽事</span>`;
+          roundButtonsContainer.innerHTML = `<span class="text-xs text-slate-400 py-1.5">請先選擇上方賽事</span>`;
           return;
         }
 
@@ -152,55 +148,45 @@
             roundButtonsContainer.innerHTML = "";
             let defaultTab = result.tabs[0];
 
-            // 檢查網址參數是否有指定賽程 (例如 round=決賽)
             if (targetRound) {
               const matched = result.tabs.find((t) => t.includes(targetRound));
               if (matched) defaultTab = matched;
-              targetRound = null; // 消耗掉參數
+              targetRound = null;
             }
 
-            // 根據傳回的分頁陣列產生獨立按鈕
             result.tabs.forEach((tabName) => {
               const btn = document.createElement("button");
-              // 介面美化：去掉「成績_」前綴，只顯示 初賽/複賽/決賽
               btn.innerText = tabName.replace("成績_", "");
-              btn.className = "round-btn px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border ";
-              // 將原始的 Excel 分頁名稱存在自訂屬性中
+              btn.className = "round-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition shadow-sm border";
               btn.dataset.sheet = tabName;
               btn.onclick = () => selectRound(tabName);
               roundButtonsContainer.appendChild(btn);
             });
 
-            // 自動點擊預設或網址指定的按鈕
             selectRound(defaultTab);
           } else {
-            roundButtonsContainer.innerHTML = `<span class="text-sm text-red-500 py-1.5">無有效賽程分頁</span>`;
+            roundButtonsContainer.innerHTML = `<span class="text-xs text-red-500 py-1.5">無有效賽程分頁</span>`;
             showStatus("找不到標準成績分頁", "error");
           }
         } catch (e) {
-          roundButtonsContainer.innerHTML = `<span class="text-sm text-red-500 py-1.5">連線失敗</span>`;
+          roundButtonsContainer.innerHTML = `<span class="text-xs text-red-500 py-1.5">連線失敗</span>`;
           showStatus("無法連線至賽事資料庫", "error");
         }
       }
 
-      // --- ★ 按鈕選中邏輯與樣式切換 ---
       function selectRound(tabName) {
         currentSheetName = tabName;
         currentRoundLabel.innerText = tabName.replace("成績_", "");
 
-        // 更新所有按鈕的樣式 (選中 vs 未選中)
         const buttons = roundButtonsContainer.querySelectorAll(".round-btn");
         buttons.forEach((btn) => {
           if (btn.dataset.sheet === tabName) {
-            // 選中狀態樣式 (深藍底白字)
-            btn.className = "round-btn px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border border-blue-600 bg-blue-600 text-white";
+            btn.className = "round-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition shadow-sm border border-blue-600 bg-blue-600 text-white";
           } else {
-            // 未選中狀態樣式 (淺灰底灰字)
-            btn.className = "round-btn px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+            btn.className = "round-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition shadow-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
           }
         });
 
-        // 觸發更新排行榜
         fetchRankings(false);
       }
 
@@ -219,7 +205,6 @@
         return encodeURIComponent(currentSheetName.trim());
       }
 
-      // 抓取排行榜資料
       async function fetchRankings(isManualRefresh = false) {
         const tbody = document.getElementById("rankTableBody");
         const loader = document.getElementById("rankLoader");
@@ -257,24 +242,24 @@
               .sort((a, b) => a.bestSec - b.bestSec);
 
             if (rankList.length === 0) {
-              tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">目前尚無選手資料</td></tr>`;
+              tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-400 text-xs">目前尚無選手資料</td></tr>`;
             } else {
               let currentRank = 1;
               rankList.forEach((item, index) => {
                 const tr = document.createElement("tr");
                 tr.className = "border-b border-slate-50 hover:bg-slate-50";
 
-                let rankStyle = "text-slate-500 font-mono";
+                let rankStyle = "text-slate-500 font-mono text-[11px] md:text-xs";
                 let rankIcon = index + 1;
                 if (item.bestSec !== Infinity) {
                   if (currentRank === 1) {
-                    rankStyle = "bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded text-xs";
+                    rankStyle = "bg-amber-100 text-amber-700 font-bold px-1 py-0.5 rounded text-[10px] md:text-xs";
                     rankIcon = "🥇 1";
                   } else if (currentRank === 2) {
-                    rankStyle = "bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded text-xs";
+                    rankStyle = "bg-slate-200 text-slate-700 font-bold px-1 py-0.5 rounded text-[10px] md:text-xs";
                     rankIcon = "🥈 2";
                   } else if (currentRank === 3) {
-                    rankStyle = "bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded text-xs";
+                    rankStyle = "bg-orange-100 text-orange-700 font-bold px-1 py-0.5 rounded text-[10px] md:text-xs";
                     rankIcon = "🥉 3";
                   }
                   currentRank++;
@@ -282,13 +267,14 @@
                   rankIcon = "-";
                 }
 
+                // 關鍵調整：姓名強制 whitespace-nowrap 且加大首轉/次轉的置中貼齊效果
                 tr.innerHTML = `
-                <td class="py-3"><span class="${rankStyle}">${rankIcon}</span></td>
-                <td class="py-3 font-mono text-slate-400">${item.id}</td>
-                <td class="py-3 font-bold text-slate-800">${item.name}</td>
-                <td class="py-3 text-slate-400 font-mono text-xs">${item.t1}</td>
-                <td class="py-3 text-slate-400 font-mono text-xs">${item.t2}</td>
-                <td class="py-3 font-mono text-blue-600 font-bold text-right pr-2 text-base">${item.bestDisplay}</td>
+                <td class="py-2.5 pl-1 pr-0.5 text-center"><span class="${rankStyle}">${rankIcon}</span></td>
+                <td class="py-2.5 px-1 font-mono text-slate-400 text-center text-xs md:text-sm">${item.id}</td>
+                <td class="py-2.5 px-1 font-bold text-slate-800 text-left whitespace-nowrap min-w-[4.5rem] tracking-tight">${item.name}</td>
+                <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t1}</td>
+                <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t2}</td>
+                <td class="py-2.5 pl-1 pr-2 font-mono text-blue-600 font-bold text-right text-xs md:text-sm tracking-tight">${item.bestDisplay}</td>
               `;
                 tbody.appendChild(tr);
               });
@@ -299,7 +285,7 @@
             if (isManualRefresh) showStatus("排行榜已同步最新數據！", "success");
           }
         } catch (e) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold">資料讀取失敗，請檢查網路連線</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-red-500 font-bold text-xs">資料讀取失敗，請檢查網路連線</td></tr>`;
           updateTimeDisplay.innerText = "連線失敗";
         } finally {
           loader.classList.add("hidden");
