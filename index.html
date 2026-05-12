@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>魔術方塊比賽系統 (極速非同步版)</title>
+    <title>魔術方塊比賽系統 (支援分秒極速版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
@@ -62,11 +62,11 @@
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-bold mb-1 text-slate-600">第一轉 (例:954)</label>
+              <label class="block text-sm font-bold mb-1 text-slate-600">第一轉 (例: 10323 轉 1:03.23)</label>
               <input type="text" id="solve1" disabled class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50" />
             </div>
             <div>
-              <label class="block text-sm font-bold mb-1 text-slate-600">第二轉 (例:1012)</label>
+              <label class="block text-sm font-bold mb-1 text-slate-600">第二轉 (例: 954 轉 9.54)</label>
               <input type="text" id="solve2" disabled class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50" />
             </div>
           </div>
@@ -109,8 +109,6 @@
       let currentScriptUrl = "";
       let lastFetchedId = "";
       let currentPage = "input";
-
-      // 背景同步佇列計數器
       let pendingUploads = 0;
 
       let competitorCache = {};
@@ -137,7 +135,6 @@
         statusBox.innerText = message;
       }
 
-      // 更新介面上的佇列計數器
       function updateQueueBadge() {
         if (pendingUploads > 0) {
           queueStatus.classList.remove("hidden");
@@ -253,11 +250,48 @@
         fetchRankings(false);
       }
 
+      // --- ★ 升級核心 1：支援分鐘數的智慧格式化 ---
       function formatScore(val) {
         val = val.trim();
         if (!val) return "";
-        if (/^\d+$/.test(val)) return (parseInt(val, 10) / 100).toFixed(2);
+
+        // 檢查是否為純數字輸入
+        if (/^\d+$/.test(val)) {
+          // 安全防護：長度過短時自動補零 (例：輸入 5 -> 005 -> 0.05)
+          val = val.padStart(3, "0");
+          const cc = val.slice(-2); // 最後兩位永遠是毫秒 (centiseconds)
+          const rest = val.slice(0, -2); // 剩餘的前面數字
+
+          if (rest.length <= 2) {
+            // 總長度 <= 4 位數：純秒數格式 (例：954 -> 9.54 / 1012 -> 10.12)
+            return `${Number(rest)}.${cc}`;
+          } else {
+            // 總長度 >= 5 位數：分秒格式 (例：10323 -> rest為103 -> 拆成 1分 03秒)
+            const ss = rest.slice(-2); // 秒數保持兩位數 (如 03)
+            const mm = rest.slice(0, -2); // 最前面的是分鐘數
+            return `${Number(mm)}:${ss}.${cc}`;
+          }
+        }
+        // 已包含冒號/小數點或輸入 DNF/DNS，轉大寫直接回傳
         return val.toUpperCase();
+      }
+
+      // --- ★ 升級核心 2：將所有格式標準化為絕對秒數，供排序引擎使用 ---
+      function timeToSec(val) {
+        if (val === "" || val === null || val === undefined) return Infinity;
+        const str = String(val).trim();
+
+        // 如果格式包含冒號 (例如 "1:03.23")
+        if (str.includes(":")) {
+          const parts = str.split(":");
+          const m = parseInt(parts[0], 10);
+          const s = parseFloat(parts[1]);
+          return m * 60 + s; // 回傳 63.23 秒
+        }
+
+        // 純秒數或 DNF 處理
+        const num = parseFloat(str);
+        return isNaN(num) ? Infinity : num;
       }
 
       function getSheetParam() {
@@ -286,27 +320,36 @@
               if (id) competitorCache[id] = name;
             });
 
+            // 透過 timeToSec 精準計算並快取最佳顯示字串
             cachedRankList = result.data
               .map((row) => {
-                const s1 = parseFloat(row[5]) || Infinity;
-                const s2 = parseFloat(row[6]) || Infinity;
-                const best = Math.min(s1, s2);
+                const s1 = timeToSec(row[5]);
+                const s2 = timeToSec(row[6]);
+                const bestSec = Math.min(s1, s2);
+
+                // 決定最佳成績要顯示哪一個原始字串
+                let bestDisplay = "--";
+                if (bestSec !== Infinity) {
+                  bestDisplay = bestSec === s1 ? String(row[5]).trim() : String(row[6]).trim();
+                }
+
                 return {
                   id: row[0],
                   name: row[1],
                   t1: row[5] || "--",
                   t2: row[6] || "--",
-                  best: best === Infinity ? 999999 : best,
+                  bestSec: bestSec, // 用於底層數字排序
+                  bestDisplay: bestDisplay, // 用於畫面上美觀呈現 (如 1:03.23)
                 };
               })
-              .sort((a, b) => a.best - b.best);
+              .sort((a, b) => a.bestSec - b.bestSec); // 絕對秒數排序
 
             setCacheBadge(true);
             idInput.disabled = false;
             idInput.placeholder = "輸入 2 位數字即時查名";
 
             if (isManualRefresh) showStatus("雲端排行榜已完成同步！", "success");
-            else showStatus(`[${roundSelect.value}] 準備就緒，可連續快速輸入成績！`, "success");
+            else showStatus(`[${roundSelect.value}] 準備就緒，支援自動分秒轉換！`, "success");
 
             if (currentPage === "rank") renderRankings();
             else idInput.focus();
@@ -343,21 +386,18 @@
         cachedRankList.forEach((item) => {
           const tr = document.createElement("tr");
           tr.className = "border-b border-slate-50 hover:bg-slate-50";
-          const bestDisplay = item.best === 999999 ? "--" : item.best.toFixed(2);
           tr.innerHTML = `
           <td class="py-3 font-mono">${item.id}</td>
           <td class="py-3 font-bold">${item.name}</td>
           <td class="py-3 text-slate-400 font-mono">${item.t1}</td>
           <td class="py-3 text-slate-400 font-mono">${item.t2}</td>
-          <td class="py-3 font-mono text-blue-600 font-bold">${bestDisplay}</td>
+          <td class="py-3 font-mono text-blue-600 font-bold">${item.bestDisplay}</td>
         `;
           tbody.appendChild(tr);
         });
       }
 
-      // --- ★ 終極改良：同步寫入本地快取 + 背景拋送請求 (完全不阻塞 UI) ---
       function submitScores() {
-        // 1. 取得當前輸入框的值 (封裝到區域變數，避免快速輸入時被下一次操作覆蓋)
         const payload = {
           id: idInput.value.trim(),
           name: nameInput.value.trim(),
@@ -369,49 +409,42 @@
 
         if (!payload.t1 || !payload.t2) return;
 
-        // 2. 樂觀更新：直接把這筆成績寫入本地記憶體排行榜快取
+        // 樂觀更新本地排行榜 (同步升級分秒計算)
         const target = cachedRankList.find((c) => c.id == payload.id);
         if (target) {
           target.t1 = payload.t1;
           target.t2 = payload.t2;
-          const b = Math.min(parseFloat(payload.t1) || Infinity, parseFloat(payload.t2) || Infinity);
-          target.best = b === Infinity ? 999999 : b;
-          cachedRankList.sort((a, b) => a.best - b.best);
+          const s1 = timeToSec(payload.t1);
+          const s2 = timeToSec(payload.t2);
+          target.bestSec = Math.min(s1, s2);
+          target.bestDisplay = target.bestSec === Infinity ? "--" : target.bestSec === s1 ? payload.t1 : payload.t2;
+          cachedRankList.sort((a, b) => a.bestSec - b.bestSec);
         }
 
-        // 3. 秒放主執行緒：瞬間清空 UI，游標跳回編號欄，準備輸入下一位選手！
         idInput.value = nameInput.value = solve1Input.value = solve2Input.value = "";
         solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = true;
         lastFetchedId = "";
         idInput.focus();
 
-        // 4. 發起背景請求佇列
         pendingUploads++;
         updateQueueBadge();
-        showStatus(`已加入排程：${payload.id}號 成績上傳雲端中...`, "info");
+        showStatus(`已加入排程：${payload.id}號 成績同步中...`, "info");
 
         const targetUrl = `${currentScriptUrl}?action=updateScore&sheet=${payload.sheetParam}&id=${payload.id}&t1=${payload.t1}&t2=${payload.t2}`;
 
-        // 使用單純的 fetch (不用 await)，讓它自己去背景跑
         fetch(targetUrl)
           .then((res) => res.json())
           .then((result) => {
             pendingUploads--;
             updateQueueBadge();
-
             if (result.success) {
-              // 如果佇列清空了，顯示提示讓工作人員知道全部搞定
-              if (pendingUploads === 0) {
-                showStatus(`🎉 雲端連線成功：所有排程成績皆已同步！`, "success");
-              }
+              if (pendingUploads === 0) showStatus(`🎉 雲端連線成功：所有排程成績皆已同步！`, "success");
             } else {
-              // 寫入失敗 (例如後端找不到編號)
               showStatus(`❌ 錯誤：${payload.id}號寫入失敗 (${result.message})`, "error");
               alert(`⚠️ 嚴重警告：[${payload.sheetName}] ${payload.id}號 ${payload.name} 寫入失敗！\n原因：${result.message}\n請記下成績並手動確認。`);
             }
           })
           .catch((err) => {
-            // 網路斷線或超時
             pendingUploads--;
             updateQueueBadge();
             showStatus(`❌ 連線失敗：${payload.id}號未上傳`, "error");
@@ -421,7 +454,7 @@
           });
       }
 
-      // --- 鍵盤操作防呆 ---
+      // 鍵盤操作防呆
       idInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && idInput.value.length === 2 && competitorCache[idInput.value.trim()]) {
           e.preventDefault();
