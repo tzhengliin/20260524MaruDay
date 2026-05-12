@@ -60,7 +60,7 @@
               id="competitorName"
               readonly
               placeholder="輸入編號瞬間帶出..."
-              class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-slate-500 font-bold text-sm md:text-base"
+              class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-slate-500 font-bold text-center text-sm md:text-base"
             />
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -106,11 +106,11 @@
         </div>
 
         <div class="overflow-x-auto -mx-1 md:mx-0">
-          <table class="w-full text-left text-xs md:text-sm">
+          <table class="w-full text-xs md:text-sm">
             <thead>
               <tr class="border-b-2 border-slate-100 text-slate-400 text-[11px] md:text-xs">
                 <th class="py-2 pl-1 pr-0.5 w-7 md:w-10 text-center">編號</th>
-                <th class="py-2 px-1 text-left min-w-[4.5rem]">姓名</th>
+                <th class="py-2 px-1 text-center min-w-[4.5rem]">姓名</th>
                 <th class="py-2 px-1 text-center text-slate-400">第一轉</th>
                 <th class="py-2 px-1 text-center text-slate-400">第二轉</th>
                 <th class="py-2 pl-1 pr-2 text-blue-600 font-bold text-right min-w-[4rem]">最佳成績</th>
@@ -412,16 +412,16 @@
         }
       };
 
-      // 關鍵優化：套用緊密版型，確保姓名欄位具備 min-w-[4.5rem] 且強制單行顯示
       function renderRankings() {
         const tbody = document.getElementById("rankTableBody");
         tbody.innerHTML = "";
         cachedRankList.forEach((item) => {
           const tr = document.createElement("tr");
           tr.className = "border-b border-slate-50 hover:bg-slate-50";
+          // ★ 姓名儲存格套用 text-center 置中對齊
           tr.innerHTML = `
             <td class="py-2.5 pl-1 pr-0.5 font-mono text-slate-400 text-center text-xs md:text-sm">${item.id}</td>
-            <td class="py-2.5 px-1 font-bold text-slate-800 text-left whitespace-nowrap min-w-[4.5rem] tracking-tight">${item.name}</td>
+            <td class="py-2.5 px-1 font-bold text-slate-800 text-center whitespace-nowrap min-w-[4.5rem] tracking-tight">${item.name}</td>
             <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t1}</td>
             <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t2}</td>
             <td class="py-2.5 pl-1 pr-2 font-mono text-blue-600 font-bold text-right text-xs md:text-sm tracking-tight">${item.bestDisplay}</td>

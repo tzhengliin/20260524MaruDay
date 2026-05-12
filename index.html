@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🏆 即時成績排行榜</title>
+    <title>🏆 即時成績排行榜大廳</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-100 min-h-screen p-3 md:p-4 font-sans text-slate-900">
     <div class="max-w-3xl mx-auto">
       <div class="text-center mb-5 mt-1 md:mt-2">
-        <h1 class="text-xl md:text-2xl font-black text-slate-800 tracking-wide flex items-center justify-center gap-1.5"><span>🏆</span> 即時成績排行榜</h1>
+        <h1 class="text-xl md:text-2xl font-black text-slate-800 tracking-wide flex items-center justify-center gap-1.5"><span>🏆</span> 大會即時排行榜</h1>
         <p class="text-xs text-slate-500 mt-0.5">Live Leaderboard</p>
       </div>
 
@@ -44,12 +44,12 @@
         </div>
 
         <div class="overflow-x-auto -mx-1 md:mx-0">
-          <table class="w-full text-left text-xs md:text-sm">
+          <table class="w-full text-xs md:text-sm">
             <thead>
               <tr class="border-b-2 border-slate-100 text-slate-400 text-[11px] md:text-xs">
                 <th class="py-2 pl-1 pr-0.5 w-9 md:w-12 text-center">名次</th>
                 <th class="py-2 px-1 w-7 md:w-10 text-center">編號</th>
-                <th class="py-2 px-1 text-left min-w-[4.5rem]">姓名</th>
+                <th class="py-2 px-1 text-center min-w-[4.5rem]">姓名</th>
                 <th class="py-2 px-1 text-center text-slate-400">第一轉</th>
                 <th class="py-2 px-1 text-center text-slate-400">第二轉</th>
                 <th class="py-2 pl-1 pr-2 text-blue-600 font-bold text-right min-w-[4rem]">最佳成績</th>
@@ -267,11 +267,11 @@
                   rankIcon = "-";
                 }
 
-                // 關鍵調整：姓名強制 whitespace-nowrap 且加大首轉/次轉的置中貼齊效果
+                // ★ 姓名儲存格套用 text-center 置中對齊
                 tr.innerHTML = `
                 <td class="py-2.5 pl-1 pr-0.5 text-center"><span class="${rankStyle}">${rankIcon}</span></td>
                 <td class="py-2.5 px-1 font-mono text-slate-400 text-center text-xs md:text-sm">${item.id}</td>
-                <td class="py-2.5 px-1 font-bold text-slate-800 text-left whitespace-nowrap min-w-[4.5rem] tracking-tight">${item.name}</td>
+                <td class="py-2.5 px-1 font-bold text-slate-800 text-center whitespace-nowrap min-w-[4.5rem] tracking-tight">${item.name}</td>
                 <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t1}</td>
                 <td class="py-2.5 px-1 text-slate-400 font-mono text-center text-[11px] md:text-xs tracking-tighter">${item.t2}</td>
                 <td class="py-2.5 pl-1 pr-2 font-mono text-blue-600 font-bold text-right text-xs md:text-sm tracking-tight">${item.bestDisplay}</td>
