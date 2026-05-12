@@ -3,33 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🏆 即時成績排行榜大廳</title>
+    <title>🏆 即時成績排行榜</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
     <div class="max-w-3xl mx-auto">
       <div class="text-center mb-6 mt-2">
-        <h1 class="text-2xl font-black text-slate-800 tracking-wide">🏆 大會即時排行榜</h1>
+        <h1 class="text-2xl font-black text-slate-800 tracking-wide">🏆 即時成績排行榜</h1>
         <p class="text-xs text-slate-500 mt-1">Live Leaderboard</p>
       </div>
 
-      <div class="bg-white p-4 rounded-xl shadow-md mb-4 border-t-4 border-blue-600">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-500 mb-1">🎯 選擇賽事</label>
-            <select id="competitionSelect" disabled class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
-              <option value="">賽事清單載入中...</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-500 mb-1">📁 選擇賽程</label>
-            <select
-              id="roundSelect"
-              disabled
-              class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium disabled:bg-slate-100 font-bold text-blue-700"
-            >
-              <option value="">請先選擇左側賽事</option>
-            </select>
+      <div class="bg-white p-4 rounded-xl shadow-md mb-4 border-t-4 border-blue-600 space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-500 mb-1">🎯 選擇賽事項目</label>
+          <select id="competitionSelect" disabled class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-medium">
+            <option value="">賽事清單載入中...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-500 mb-1">📁 賽程階段</label>
+          <div id="roundButtonsContainer" class="flex flex-wrap gap-2">
+            <span class="text-sm text-slate-400 py-1.5">請先選擇上方賽事</span>
           </div>
         </div>
       </div>
@@ -39,8 +34,9 @@
       <div class="bg-white p-4 rounded-xl shadow-lg">
         <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-bold text-slate-700">排名狀態</span>
-            <span id="updateTimeDisplay" class="text-xs text-slate-400">尚未載入</span>
+            <span class="text-sm font-bold text-slate-700">當前排行</span>
+            <span id="currentRoundLabel" class="text-xs bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded">--</span>
+            <span id="updateTimeDisplay" class="text-xs text-slate-400 ml-1">尚未載入</span>
           </div>
           <button onclick="fetchRankings(true)" class="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition">
             <span>🔄 重新整理</span>
@@ -72,10 +68,18 @@
 
     <script>
       let currentScriptUrl = "";
+      let currentSheetName = ""; // 全域變數：追蹤目前選中的分頁名稱
+
       const compSelect = document.getElementById("competitionSelect");
-      const roundSelect = document.getElementById("roundSelect");
+      const roundButtonsContainer = document.getElementById("roundButtonsContainer");
       const statusBox = document.getElementById("statusBox");
       const updateTimeDisplay = document.getElementById("updateTimeDisplay");
+      const currentRoundLabel = document.getElementById("currentRoundLabel");
+
+      // 取得網址參數 (一次性消耗)
+      const urlParams = new URLSearchParams(window.location.search);
+      let targetComp = urlParams.get("comp");
+      let targetRound = urlParams.get("round");
 
       window.onload = loadConfigFile;
 
@@ -85,17 +89,12 @@
         else if (type === "error") statusBox.classList.add("bg-red-100", "text-red-800");
         else statusBox.classList.add("bg-blue-100", "text-blue-800");
         statusBox.innerText = message;
-
-        // 自動隱藏成功/一般訊息，保持畫面簡潔
-        if (type !== "error") {
-          setTimeout(() => statusBox.classList.add("hidden"), 4000);
-        }
+        if (type !== "error") setTimeout(() => statusBox.classList.add("hidden"), 4000);
       }
 
-      // --- 讀取放在 /keyin/ 資料夾下的 config.txt ---
+      // 讀取賽事清單
       async function loadConfigFile() {
         try {
-          // 精準指向 keyin 資料夾
           const response = await fetch("keyin/config.txt?t=" + new Date().getTime());
           if (!response.ok) throw new Error("找不到檔案");
           const text = await response.text();
@@ -112,53 +111,99 @@
               count++;
             }
           });
-          if (count > 0) compSelect.disabled = false;
+
+          if (count > 0) {
+            compSelect.disabled = false;
+            // 自動比對網址參數選擇賽事
+            if (targetComp) {
+              for (let opt of compSelect.options) {
+                if (opt.text.includes(targetComp)) {
+                  compSelect.value = opt.value;
+                  break;
+                }
+              }
+              targetComp = null;
+            }
+            if (compSelect.value) await loadTabs();
+          }
         } catch (e) {
           showStatus("無法讀取賽事設定檔，請確認系統路徑", "error");
         }
       }
 
-      // --- 切換比賽時：自動抓取該場次的分頁 ---
-      compSelect.onchange = async () => {
+      compSelect.onchange = () => loadTabs();
+
+      // 載入賽程分頁並「動態建立按鈕」
+      async function loadTabs() {
         currentScriptUrl = compSelect.value;
-        roundSelect.disabled = true;
+        roundButtonsContainer.innerHTML = `<span class="text-sm text-slate-400 py-1.5">連線讀取賽程中...</span>`;
+        currentSheetName = "";
+
         if (!currentScriptUrl) {
-          roundSelect.innerHTML = "<option value=''>請先選擇左側賽事</option>";
+          roundButtonsContainer.innerHTML = `<span class="text-sm text-slate-400 py-1.5">請先選擇上方賽事</span>`;
           return;
         }
-
-        roundSelect.innerHTML = "<option value=''>連線賽事系統中...</option>";
 
         try {
           const res = await fetch(`${currentScriptUrl}?action=getTabs`);
           const result = await res.json();
 
           if (result.success && result.tabs.length > 0) {
-            roundSelect.innerHTML = "";
-            result.tabs.forEach((tab) => {
-              const opt = document.createElement("option");
-              opt.value = tab;
-              opt.textContent = tab;
-              roundSelect.appendChild(opt);
+            roundButtonsContainer.innerHTML = "";
+            let defaultTab = result.tabs[0];
+
+            // 檢查網址參數是否有指定賽程 (例如 round=決賽)
+            if (targetRound) {
+              const matched = result.tabs.find((t) => t.includes(targetRound));
+              if (matched) defaultTab = matched;
+              targetRound = null; // 消耗掉參數
+            }
+
+            // 根據傳回的分頁陣列產生獨立按鈕
+            result.tabs.forEach((tabName) => {
+              const btn = document.createElement("button");
+              // 介面美化：去掉「成績_」前綴，只顯示 初賽/複賽/決賽
+              btn.innerText = tabName.replace("成績_", "");
+              btn.className = "round-btn px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border ";
+              // 將原始的 Excel 分頁名稱存在自訂屬性中
+              btn.dataset.sheet = tabName;
+              btn.onclick = () => selectRound(tabName);
+              roundButtonsContainer.appendChild(btn);
             });
-            roundSelect.disabled = false;
-            onRoundChange();
+
+            // 自動點擊預設或網址指定的按鈕
+            selectRound(defaultTab);
           } else {
-            roundSelect.innerHTML = "<option value=''>無目標分頁</option>";
+            roundButtonsContainer.innerHTML = `<span class="text-sm text-red-500 py-1.5">無有效賽程分頁</span>`;
             showStatus("找不到標準成績分頁", "error");
           }
         } catch (e) {
-          roundSelect.innerHTML = "<option value=''>連線失敗</option>";
+          roundButtonsContainer.innerHTML = `<span class="text-sm text-red-500 py-1.5">連線失敗</span>`;
           showStatus("無法連線至賽事資料庫", "error");
         }
-      };
+      }
 
-      roundSelect.onchange = onRoundChange;
-      function onRoundChange() {
+      // --- ★ 按鈕選中邏輯與樣式切換 ---
+      function selectRound(tabName) {
+        currentSheetName = tabName;
+        currentRoundLabel.innerText = tabName.replace("成績_", "");
+
+        // 更新所有按鈕的樣式 (選中 vs 未選中)
+        const buttons = roundButtonsContainer.querySelectorAll(".round-btn");
+        buttons.forEach((btn) => {
+          if (btn.dataset.sheet === tabName) {
+            // 選中狀態樣式 (深藍底白字)
+            btn.className = "round-btn px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border border-blue-600 bg-blue-600 text-white";
+          } else {
+            // 未選中狀態樣式 (淺灰底灰字)
+            btn.className = "round-btn px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+          }
+        });
+
+        // 觸發更新排行榜
         fetchRankings(false);
       }
 
-      // --- 時間轉絕對秒數引擎 (維持精準排序) ---
       function timeToSec(val) {
         if (val === "" || val === null || val === undefined) return Infinity;
         const str = String(val).trim();
@@ -171,14 +216,14 @@
       }
 
       function getSheetParam() {
-        return encodeURIComponent(roundSelect.value.trim());
+        return encodeURIComponent(currentSheetName.trim());
       }
 
-      // --- 抓取並渲染排行榜 ---
+      // 抓取排行榜資料
       async function fetchRankings(isManualRefresh = false) {
         const tbody = document.getElementById("rankTableBody");
         const loader = document.getElementById("rankLoader");
-        if (!currentScriptUrl || !roundSelect.value) return;
+        if (!currentScriptUrl || !currentSheetName) return;
 
         tbody.innerHTML = "";
         loader.classList.remove("hidden");
@@ -211,7 +256,6 @@
               })
               .sort((a, b) => a.bestSec - b.bestSec);
 
-            // 渲染表格 (自動產生排名數字)
             if (rankList.length === 0) {
               tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">目前尚無選手資料</td></tr>`;
             } else {
@@ -220,7 +264,6 @@
                 const tr = document.createElement("tr");
                 tr.className = "border-b border-slate-50 hover:bg-slate-50";
 
-                // 標示前三名的視覺特效
                 let rankStyle = "text-slate-500 font-mono";
                 let rankIcon = index + 1;
                 if (item.bestSec !== Infinity) {
@@ -236,7 +279,7 @@
                   }
                   currentRank++;
                 } else {
-                  rankIcon = "-"; // 無成績者不列入正式排名名次
+                  rankIcon = "-";
                 }
 
                 tr.innerHTML = `
@@ -251,10 +294,8 @@
               });
             }
 
-            // 更新最後刷新時間
             const now = new Date();
             updateTimeDisplay.innerText = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-
             if (isManualRefresh) showStatus("排行榜已同步最新數據！", "success");
           }
         } catch (e) {
