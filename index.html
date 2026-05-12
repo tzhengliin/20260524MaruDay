@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>魔術方塊比賽系統 (極速快取版)</title>
+    <title>魔術方塊比賽系統 (極速非同步版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
@@ -39,7 +39,10 @@
       <div id="pageInput" class="bg-white p-6 rounded-xl shadow-lg">
         <div class="flex justify-between items-center border-b pb-2 mb-4">
           <h2 class="text-lg font-bold text-slate-700">選手記分台</h2>
-          <span id="cacheStatus" class="text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded font-bold border border-amber-200">名單未載入</span>
+          <div class="flex gap-2">
+            <span id="queueStatus" class="hidden text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200 animate-pulse"> 背景同步中: 0 筆 </span>
+            <span id="cacheStatus" class="text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded font-bold border border-amber-200">名單未載入</span>
+          </div>
         </div>
         <div class="space-y-4">
           <div>
@@ -80,8 +83,8 @@
 
       <div id="pageRank" class="hidden bg-white p-4 rounded-xl shadow-lg">
         <div class="flex justify-between items-center mb-4 border-b pb-2">
-          <h2 class="text-lg font-bold text-slate-700">即時排行榜</h2>
-          <button onclick="fetchRankings(true)" class="text-blue-600 text-sm font-bold hover:underline">🔄 強制更新排行榜</button>
+          <h2 class="text-lg font-bold text-slate-700">即時排行榜 (含本地預覽)</h2>
+          <button onclick="fetchRankings(true)" class="text-blue-600 text-sm font-bold hover:underline">🔄 強制同步雲端數據</button>
         </div>
 
         <div class="overflow-x-auto">
@@ -107,9 +110,11 @@
       let lastFetchedId = "";
       let currentPage = "input";
 
-      // 核心快取變數：儲存當前分頁所有的 { "01": "張三", "02": "李四" }
+      // 背景同步佇列計數器
+      let pendingUploads = 0;
+
       let competitorCache = {};
-      let cachedRankList = []; // 同時快取排行榜資料
+      let cachedRankList = [];
 
       const compSelect = document.getElementById("competitionSelect");
       const roundSelect = document.getElementById("roundSelect");
@@ -120,6 +125,7 @@
       const submitBtn = document.getElementById("submitBtn");
       const statusBox = document.getElementById("statusBox");
       const cacheStatus = document.getElementById("cacheStatus");
+      const queueStatus = document.getElementById("queueStatus");
 
       window.onload = loadConfigFile;
 
@@ -131,10 +137,20 @@
         statusBox.innerText = message;
       }
 
+      // 更新介面上的佇列計數器
+      function updateQueueBadge() {
+        if (pendingUploads > 0) {
+          queueStatus.classList.remove("hidden");
+          queueStatus.innerText = `背景上傳中: ${pendingUploads} 筆`;
+        } else {
+          queueStatus.classList.add("hidden");
+        }
+      }
+
       function setCacheBadge(loaded) {
         if (loaded) {
           cacheStatus.className = "text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-200";
-          cacheStatus.innerText = "⚡ 本地秒查啟用中";
+          cacheStatus.innerText = "⚡ 本地秒查啟用";
         } else {
           cacheStatus.className = "text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded font-bold border border-amber-200";
           cacheStatus.innerText = "載入快取中...";
@@ -159,7 +175,7 @@
           pRank.classList.remove("hidden");
           navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600";
           navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white";
-          renderRankings(); // 直接渲染本地快取的排行，速度極快
+          renderRankings();
         }
       }
 
@@ -225,7 +241,6 @@
         }
       };
 
-      // --- 切換分頁時：觸發整頁資料快取 ---
       roundSelect.onchange = onRoundChange;
       function onRoundChange() {
         idInput.disabled = true;
@@ -235,8 +250,6 @@
         lastFetchedId = "";
         competitorCache = {};
         setCacheBadge(false);
-
-        // 背景預先載入整張表格資料 (同時建立姓名快取與排行榜)
         fetchRankings(false);
       }
 
@@ -251,13 +264,12 @@
         return encodeURIComponent(roundSelect.value.trim());
       }
 
-      // --- ★ 改良核心：背景預載資料與建立字典 ---
       async function fetchRankings(isManualRefresh = false) {
         const loader = document.getElementById("rankLoader");
         if (!currentScriptUrl || !roundSelect.value) return;
 
         if (isManualRefresh) {
-          showStatus("正在向 Google Sheet 要求最新數據...", "info");
+          showStatus("正在同步雲端最新數據...", "info");
           loader.classList.remove("hidden");
           document.getElementById("rankTableBody").innerHTML = "";
         }
@@ -267,16 +279,13 @@
           const result = await res.json();
 
           if (result.success) {
-            competitorCache = {}; // 清空字典
-
-            // 建立本地端比對字典
+            competitorCache = {};
             result.data.forEach((row) => {
               const id = String(row[0]).trim();
               const name = row[1];
               if (id) competitorCache[id] = name;
             });
 
-            // 處理排行快取
             cachedRankList = result.data
               .map((row) => {
                 const s1 = parseFloat(row[5]) || Infinity;
@@ -292,33 +301,27 @@
               })
               .sort((a, b) => a.best - b.best);
 
-            // 狀態更新：快取完畢，解鎖 UI
             setCacheBadge(true);
             idInput.disabled = false;
             idInput.placeholder = "輸入 2 位數字即時查名";
 
-            if (isManualRefresh) {
-              showStatus("排行榜與本地快取已同步更新！", "success");
-            } else {
-              showStatus(`[${roundSelect.value}] 名單快取成功，輸入完全零延遲！`, "success");
-            }
+            if (isManualRefresh) showStatus("雲端排行榜已完成同步！", "success");
+            else showStatus(`[${roundSelect.value}] 準備就緒，可連續快速輸入成績！`, "success");
 
             if (currentPage === "rank") renderRankings();
             else idInput.focus();
           }
         } catch (e) {
-          showStatus("快取載入失敗，請檢查連線", "error");
+          showStatus("資料載入失敗，請檢查網路", "error");
           idInput.placeholder = "載入失敗";
         } finally {
           loader.classList.add("hidden");
         }
       }
 
-      // --- ★ 改良核心：本機記憶體直接比對姓名 (0秒延遲) ---
       idInput.oninput = () => {
         const id = idInput.value.trim();
         if (id.length === 2) {
-          // 直接從剛才載入的 JavaScript Object 尋找 key
           if (competitorCache[id]) {
             nameInput.value = competitorCache[id];
             lastFetchedId = id;
@@ -334,7 +337,6 @@
         }
       };
 
-      // --- 渲染快取排行榜 (不需等待網路) ---
       function renderRankings() {
         const tbody = document.getElementById("rankTableBody");
         tbody.innerHTML = "";
@@ -353,53 +355,70 @@
         });
       }
 
-      // --- 寫入成績 (維持同步 API 上傳) ---
-      async function submitScores() {
-        const t1 = formatScore(solve1Input.value);
-        const t2 = formatScore(solve2Input.value);
-        solve1Input.value = t1;
-        solve2Input.value = t2;
-        if (!t1 || !t2) return;
+      // --- ★ 終極改良：同步寫入本地快取 + 背景拋送請求 (完全不阻塞 UI) ---
+      function submitScores() {
+        // 1. 取得當前輸入框的值 (封裝到區域變數，避免快速輸入時被下一次操作覆蓋)
+        const payload = {
+          id: idInput.value.trim(),
+          name: nameInput.value.trim(),
+          t1: formatScore(solve1Input.value),
+          t2: formatScore(solve2Input.value),
+          sheetName: roundSelect.value.trim(),
+          sheetParam: getSheetParam(),
+        };
 
-        submitBtn.disabled = true;
-        submitBtn.innerText = "資料寫入雲端中...";
-        showStatus("正在同步成績至 Google Sheet...", "info");
-        solve1Input.disabled = solve2Input.disabled = true;
+        if (!payload.t1 || !payload.t2) return;
 
-        // 保存當前的 id 與 name 以供提示使用
-        const submittedId = idInput.value;
-        const submittedName = nameInput.value;
-
-        try {
-          const res = await fetch(`${currentScriptUrl}?action=updateScore&sheet=${getSheetParam()}&id=${submittedId}&t1=${t1}&t2=${t2}`);
-          const result = await res.json();
-          if (result.success) {
-            showStatus(`🎉 ${submittedId}號 ${submittedName} 成績上傳成功！`, "success");
-
-            // 更新本地排行榜快取資料，確保切換分頁時看到的是剛剛輸入的結果
-            const target = cachedRankList.find((c) => c.id == submittedId);
-            if (target) {
-              target.t1 = t1;
-              target.t2 = t2;
-              const b = Math.min(parseFloat(t1) || Infinity, parseFloat(t2) || Infinity);
-              target.best = b === Infinity ? 999999 : b;
-              cachedRankList.sort((a, b) => a.best - b.best);
-            }
-
-            idInput.value = nameInput.value = solve1Input.value = solve2Input.value = "";
-            lastFetchedId = "";
-            idInput.focus();
-          } else {
-            showStatus(result.message, "error");
-            solve1Input.disabled = solve2Input.disabled = false;
-          }
-        } catch (e) {
-          showStatus("寫入失敗，請重試", "error");
-          solve1Input.disabled = solve2Input.disabled = false;
-        } finally {
-          submitBtn.disabled = true;
-          submitBtn.innerText = "確認送出 (Enter)";
+        // 2. 樂觀更新：直接把這筆成績寫入本地記憶體排行榜快取
+        const target = cachedRankList.find((c) => c.id == payload.id);
+        if (target) {
+          target.t1 = payload.t1;
+          target.t2 = payload.t2;
+          const b = Math.min(parseFloat(payload.t1) || Infinity, parseFloat(payload.t2) || Infinity);
+          target.best = b === Infinity ? 999999 : b;
+          cachedRankList.sort((a, b) => a.best - b.best);
         }
+
+        // 3. 秒放主執行緒：瞬間清空 UI，游標跳回編號欄，準備輸入下一位選手！
+        idInput.value = nameInput.value = solve1Input.value = solve2Input.value = "";
+        solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = true;
+        lastFetchedId = "";
+        idInput.focus();
+
+        // 4. 發起背景請求佇列
+        pendingUploads++;
+        updateQueueBadge();
+        showStatus(`已加入排程：${payload.id}號 成績上傳雲端中...`, "info");
+
+        const targetUrl = `${currentScriptUrl}?action=updateScore&sheet=${payload.sheetParam}&id=${payload.id}&t1=${payload.t1}&t2=${payload.t2}`;
+
+        // 使用單純的 fetch (不用 await)，讓它自己去背景跑
+        fetch(targetUrl)
+          .then((res) => res.json())
+          .then((result) => {
+            pendingUploads--;
+            updateQueueBadge();
+
+            if (result.success) {
+              // 如果佇列清空了，顯示提示讓工作人員知道全部搞定
+              if (pendingUploads === 0) {
+                showStatus(`🎉 雲端連線成功：所有排程成績皆已同步！`, "success");
+              }
+            } else {
+              // 寫入失敗 (例如後端找不到編號)
+              showStatus(`❌ 錯誤：${payload.id}號寫入失敗 (${result.message})`, "error");
+              alert(`⚠️ 嚴重警告：[${payload.sheetName}] ${payload.id}號 ${payload.name} 寫入失敗！\n原因：${result.message}\n請記下成績並手動確認。`);
+            }
+          })
+          .catch((err) => {
+            // 網路斷線或超時
+            pendingUploads--;
+            updateQueueBadge();
+            showStatus(`❌ 連線失敗：${payload.id}號未上傳`, "error");
+            alert(
+              `⚠️ 網路異常：[${payload.sheetName}] ${payload.id}號 ${payload.name} 雲端同步失敗！\n請確認網路連線，並手動至 Google Sheet 補登該筆成績：\n第一轉: ${payload.t1} / 第二轉: ${payload.t2}`
+            );
+          });
       }
 
       // --- 鍵盤操作防呆 ---
