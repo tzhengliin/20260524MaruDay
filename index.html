@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>魔術方塊比賽系統 (支援分秒極速版)</title>
+    <title>魔術方塊比賽系統 (極速防呆版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
@@ -62,12 +62,24 @@
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-bold mb-1 text-slate-600">第一轉 (例: 10323 轉 1:03.23)</label>
-              <input type="text" id="solve1" disabled class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50" />
+              <label class="block text-sm font-bold mb-1 text-slate-600">第一轉 (自動過濾雜訊)</label>
+              <input
+                type="text"
+                id="solve1"
+                disabled
+                class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50"
+                placeholder="例: 9/54 自動轉 9.54"
+              />
             </div>
             <div>
-              <label class="block text-sm font-bold mb-1 text-slate-600">第二轉 (例: 954 轉 9.54)</label>
-              <input type="text" id="solve2" disabled class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50" />
+              <label class="block text-sm font-bold mb-1 text-slate-600">第二轉 (自動過濾雜訊)</label>
+              <input
+                type="text"
+                id="solve2"
+                disabled
+                class="w-full px-3 py-2 border border-slate-300 rounded focus:border-blue-500 font-mono text-lg disabled:bg-slate-50"
+                placeholder="例: 1:03.23 轉 1:03.23"
+              />
             </div>
           </div>
           <button
@@ -250,46 +262,51 @@
         fetchRankings(false);
       }
 
-      // --- ★ 升級核心 1：支援分鐘數的智慧格式化 ---
+      // --- ★ 升級核心 1：自動過濾雜訊 + 支援分秒智慧格式化 ---
       function formatScore(val) {
         val = val.trim();
         if (!val) return "";
 
-        // 檢查是否為純數字輸入
-        if (/^\d+$/.test(val)) {
-          // 安全防護：長度過短時自動補零 (例：輸入 5 -> 005 -> 0.05)
-          val = val.padStart(3, "0");
-          const cc = val.slice(-2); // 最後兩位永遠是毫秒 (centiseconds)
-          const rest = val.slice(0, -2); // 剩餘的前面數字
-
-          if (rest.length <= 2) {
-            // 總長度 <= 4 位數：純秒數格式 (例：954 -> 9.54 / 1012 -> 10.12)
-            return `${Number(rest)}.${cc}`;
-          } else {
-            // 總長度 >= 5 位數：分秒格式 (例：10323 -> rest為103 -> 拆成 1分 03秒)
-            const ss = rest.slice(-2); // 秒數保持兩位數 (如 03)
-            const mm = rest.slice(0, -2); // 最前面的是分鐘數
-            return `${Number(mm)}:${ss}.${cc}`;
-          }
+        // 1. 保留魔術方塊常見的特殊判決字串 (避免 DNF 被當成雜訊清空)
+        const upperVal = val.toUpperCase();
+        if (upperVal === "DNF" || upperVal === "DNS") {
+          return upperVal;
         }
-        // 已包含冒號/小數點或輸入 DNF/DNS，轉大寫直接回傳
-        return val.toUpperCase();
+
+        // 2. 清除所有「非數字」的字元 (包含小數點、冒號、空白或誤觸的英文字母)
+        let pureNumbers = val.replace(/\D/g, "");
+
+        // 如果清除後完全沒有數字 (例如單純不小心輸入了純文字)，回傳原本大寫內容
+        if (!pureNumbers) return upperVal;
+
+        // 3. 執行長度安全補零與時間轉換
+        pureNumbers = pureNumbers.padStart(3, "0");
+        const cc = pureNumbers.slice(-2); // 毫秒
+        const rest = pureNumbers.slice(0, -2); // 剩餘數字
+
+        if (rest.length <= 2) {
+          // 純秒數格式
+          return `${Number(rest)}.${cc}`;
+        } else {
+          // 分秒格式
+          const ss = rest.slice(-2);
+          const mm = rest.slice(0, -2);
+          return `${Number(mm)}:${ss}.${cc}`;
+        }
       }
 
-      // --- ★ 升級核心 2：將所有格式標準化為絕對秒數，供排序引擎使用 ---
+      // --- ★ 升級核心 2：將所有格式標準化為絕對秒數 ---
       function timeToSec(val) {
         if (val === "" || val === null || val === undefined) return Infinity;
         const str = String(val).trim();
 
-        // 如果格式包含冒號 (例如 "1:03.23")
         if (str.includes(":")) {
           const parts = str.split(":");
           const m = parseInt(parts[0], 10);
           const s = parseFloat(parts[1]);
-          return m * 60 + s; // 回傳 63.23 秒
+          return m * 60 + s;
         }
 
-        // 純秒數或 DNF 處理
         const num = parseFloat(str);
         return isNaN(num) ? Infinity : num;
       }
@@ -320,14 +337,12 @@
               if (id) competitorCache[id] = name;
             });
 
-            // 透過 timeToSec 精準計算並快取最佳顯示字串
             cachedRankList = result.data
               .map((row) => {
                 const s1 = timeToSec(row[5]);
                 const s2 = timeToSec(row[6]);
                 const bestSec = Math.min(s1, s2);
 
-                // 決定最佳成績要顯示哪一個原始字串
                 let bestDisplay = "--";
                 if (bestSec !== Infinity) {
                   bestDisplay = bestSec === s1 ? String(row[5]).trim() : String(row[6]).trim();
@@ -338,18 +353,18 @@
                   name: row[1],
                   t1: row[5] || "--",
                   t2: row[6] || "--",
-                  bestSec: bestSec, // 用於底層數字排序
-                  bestDisplay: bestDisplay, // 用於畫面上美觀呈現 (如 1:03.23)
+                  bestSec: bestSec,
+                  bestDisplay: bestDisplay,
                 };
               })
-              .sort((a, b) => a.bestSec - b.bestSec); // 絕對秒數排序
+              .sort((a, b) => a.bestSec - b.bestSec);
 
             setCacheBadge(true);
             idInput.disabled = false;
             idInput.placeholder = "輸入 2 位數字即時查名";
 
             if (isManualRefresh) showStatus("雲端排行榜已完成同步！", "success");
-            else showStatus(`[${roundSelect.value}] 準備就緒，支援自動分秒轉換！`, "success");
+            else showStatus(`[${roundSelect.value}] 準備就緒，具備雜訊自動過濾功能！`, "success");
 
             if (currentPage === "rank") renderRankings();
             else idInput.focus();
@@ -409,7 +424,6 @@
 
         if (!payload.t1 || !payload.t2) return;
 
-        // 樂觀更新本地排行榜 (同步升級分秒計算)
         const target = cachedRankList.find((c) => c.id == payload.id);
         if (target) {
           target.t1 = payload.t1;
