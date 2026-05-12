@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>魔術方塊比賽系統</title>
+    <title>魔術方塊比賽系統 (極速快取版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-100 min-h-screen p-4 font-sans text-slate-900">
@@ -37,7 +37,10 @@
       <div id="statusBox" class="hidden mb-4 p-3 rounded text-sm text-center font-medium shadow-sm"></div>
 
       <div id="pageInput" class="bg-white p-6 rounded-xl shadow-lg">
-        <h2 class="text-lg font-bold mb-4 text-slate-700 border-b pb-2">選手記分台</h2>
+        <div class="flex justify-between items-center border-b pb-2 mb-4">
+          <h2 class="text-lg font-bold text-slate-700">選手記分台</h2>
+          <span id="cacheStatus" class="text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded font-bold border border-amber-200">名單未載入</span>
+        </div>
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-bold mb-1 text-slate-600">選手編號 (2位數)</label>
@@ -45,14 +48,14 @@
               type="text"
               id="competitorId"
               maxlength="2"
-              placeholder="選擇分頁後啟用"
+              placeholder="等待名單快取後啟用..."
               disabled
               class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-lg disabled:bg-slate-100 uppercase"
             />
           </div>
           <div>
             <label class="block text-sm font-bold mb-1 text-slate-600">選手姓名</label>
-            <input type="text" id="competitorName" readonly placeholder="等待查詢..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-slate-500 font-bold" />
+            <input type="text" id="competitorName" readonly placeholder="輸入編號瞬間帶出..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-slate-500 font-bold" />
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -78,7 +81,7 @@
       <div id="pageRank" class="hidden bg-white p-4 rounded-xl shadow-lg">
         <div class="flex justify-between items-center mb-4 border-b pb-2">
           <h2 class="text-lg font-bold text-slate-700">即時排行榜</h2>
-          <button onclick="fetchRankings()" class="text-blue-600 text-sm font-bold hover:underline">🔄 刷新數據</button>
+          <button onclick="fetchRankings(true)" class="text-blue-600 text-sm font-bold hover:underline">🔄 強制更新排行榜</button>
         </div>
 
         <div class="overflow-x-auto">
@@ -95,15 +98,18 @@
             <tbody id="rankTableBody"></tbody>
           </table>
         </div>
-        <div id="rankLoader" class="text-center py-10 text-slate-400">讀取中...</div>
+        <div id="rankLoader" class="text-center py-10 text-slate-400">讀取資料中...</div>
       </div>
     </div>
 
     <script>
       let currentScriptUrl = "";
-      let isFetching = false;
       let lastFetchedId = "";
-      let currentPage = "input"; // 追蹤當前分頁
+      let currentPage = "input";
+
+      // 核心快取變數：儲存當前分頁所有的 { "01": "張三", "02": "李四" }
+      let competitorCache = {};
+      let cachedRankList = []; // 同時快取排行榜資料
 
       const compSelect = document.getElementById("competitionSelect");
       const roundSelect = document.getElementById("roundSelect");
@@ -113,6 +119,7 @@
       const solve2Input = document.getElementById("solve2");
       const submitBtn = document.getElementById("submitBtn");
       const statusBox = document.getElementById("statusBox");
+      const cacheStatus = document.getElementById("cacheStatus");
 
       window.onload = loadConfigFile;
 
@@ -124,7 +131,16 @@
         statusBox.innerText = message;
       }
 
-      // --- 頁面切換邏輯 ---
+      function setCacheBadge(loaded) {
+        if (loaded) {
+          cacheStatus.className = "text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-200";
+          cacheStatus.innerText = "⚡ 本地秒查啟用中";
+        } else {
+          cacheStatus.className = "text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded font-bold border border-amber-200";
+          cacheStatus.innerText = "載入快取中...";
+        }
+      }
+
       function switchPage(page) {
         currentPage = page;
         const pInput = document.getElementById("pageInput");
@@ -143,11 +159,10 @@
           pRank.classList.remove("hidden");
           navInput.className = "flex-1 py-3 rounded-lg font-bold shadow bg-white text-slate-600";
           navRank.className = "flex-1 py-3 rounded-lg font-bold shadow bg-blue-600 text-white";
-          fetchRankings();
+          renderRankings(); // 直接渲染本地快取的排行，速度極快
         }
       }
 
-      // --- 自動讀取 config.txt ---
       async function loadConfigFile() {
         try {
           const response = await fetch("config.txt?t=" + new Date().getTime());
@@ -171,18 +186,20 @@
         }
       }
 
-      // --- 當切換比賽時：抓取符合目標名稱的分頁 ---
       compSelect.onchange = async () => {
         currentScriptUrl = compSelect.value;
         roundSelect.disabled = true;
         idInput.disabled = true;
+        competitorCache = {};
+        setCacheBadge(false);
+
         if (!currentScriptUrl) {
           roundSelect.innerHTML = "<option value=''>請先選擇左側比賽</option>";
           return;
         }
 
-        roundSelect.innerHTML = "<option value=''>讀取指定分頁中...</option>";
-        showStatus("正在驗證試算表分頁...", "info");
+        roundSelect.innerHTML = "<option value=''>連線抓取分頁中...</option>";
+        showStatus("正在讀取試算表架構...", "info");
 
         try {
           const res = await fetch(`${currentScriptUrl}?action=getTabs`);
@@ -197,11 +214,10 @@
               roundSelect.appendChild(opt);
             });
             roundSelect.disabled = false;
-            onRoundChange(); // 觸發分頁設定更新
-            showStatus(`成功讀取指定分頁！`, "success");
+            onRoundChange();
           } else {
             roundSelect.innerHTML = "<option value=''>無目標分頁</option>";
-            showStatus("找不到名稱為『成績_初賽/複賽/決賽』的分頁", "error");
+            showStatus("找不到標準成績分頁", "error");
           }
         } catch (e) {
           roundSelect.innerHTML = "<option value=''>連線失敗</option>";
@@ -209,27 +225,19 @@
         }
       };
 
-      // --- 當切換賽程分頁時：根據當前所在頁面執行同步更新 ---
+      // --- 切換分頁時：觸發整頁資料快取 ---
       roundSelect.onchange = onRoundChange;
       function onRoundChange() {
-        // 重置輸入欄位狀態
-        idInput.disabled = false;
-        idInput.placeholder = "輸入 2 位數字自動查詢";
-        idInput.value = "";
-        nameInput.value = "";
-        solve1Input.value = "";
-        solve2Input.value = "";
-        solve1Input.disabled = true;
-        solve2Input.disabled = true;
-        submitBtn.disabled = true;
+        idInput.disabled = true;
+        idInput.placeholder = "背景載入名單快取中...";
+        idInput.value = nameInput.value = solve1Input.value = solve2Input.value = "";
+        solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = true;
         lastFetchedId = "";
+        competitorCache = {};
+        setCacheBadge(false);
 
-        // 智慧判斷：如果目前在「排行頁」，立刻重抓該分頁的排行；如果在「輸入頁」，把焦點放到輸入框
-        if (currentPage === "rank") {
-          fetchRankings();
-        } else {
-          idInput.focus();
-        }
+        // 背景預先載入整張表格資料 (同時建立姓名快取與排行榜)
+        fetchRankings(false);
       }
 
       function formatScore(val) {
@@ -243,41 +251,109 @@
         return encodeURIComponent(roundSelect.value.trim());
       }
 
-      // --- API：查詢選手 ---
-      idInput.oninput = () => {
-        if (idInput.value.length === 2) fetchName();
-      };
-      async function fetchName() {
-        const id = idInput.value.trim();
-        if (id.length !== 2 || isFetching || !roundSelect.value) return;
+      // --- ★ 改良核心：背景預載資料與建立字典 ---
+      async function fetchRankings(isManualRefresh = false) {
+        const loader = document.getElementById("rankLoader");
+        if (!currentScriptUrl || !roundSelect.value) return;
 
-        isFetching = true;
-        nameInput.value = "查詢中...";
-        showStatus(`正在查詢 [${roundSelect.value}] 選手資料...`, "info");
+        if (isManualRefresh) {
+          showStatus("正在向 Google Sheet 要求最新數據...", "info");
+          loader.classList.remove("hidden");
+          document.getElementById("rankTableBody").innerHTML = "";
+        }
 
         try {
-          const res = await fetch(`${currentScriptUrl}?action=getName&sheet=${getSheetParam()}&id=${id}`);
+          const res = await fetch(`${currentScriptUrl}?action=getRankings&sheet=${getSheetParam()}`);
           const result = await res.json();
+
           if (result.success) {
-            nameInput.value = result.name;
-            lastFetchedId = id;
-            solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = false;
-            showStatus(`鎖定輸入分頁：${roundSelect.value}`, "success");
-            solve1Input.focus();
-          } else {
-            nameInput.value = "";
-            showStatus(result.message, "error");
-            idInput.focus();
+            competitorCache = {}; // 清空字典
+
+            // 建立本地端比對字典
+            result.data.forEach((row) => {
+              const id = String(row[0]).trim();
+              const name = row[1];
+              if (id) competitorCache[id] = name;
+            });
+
+            // 處理排行快取
+            cachedRankList = result.data
+              .map((row) => {
+                const s1 = parseFloat(row[5]) || Infinity;
+                const s2 = parseFloat(row[6]) || Infinity;
+                const best = Math.min(s1, s2);
+                return {
+                  id: row[0],
+                  name: row[1],
+                  t1: row[5] || "--",
+                  t2: row[6] || "--",
+                  best: best === Infinity ? 999999 : best,
+                };
+              })
+              .sort((a, b) => a.best - b.best);
+
+            // 狀態更新：快取完畢，解鎖 UI
+            setCacheBadge(true);
+            idInput.disabled = false;
+            idInput.placeholder = "輸入 2 位數字即時查名";
+
+            if (isManualRefresh) {
+              showStatus("排行榜與本地快取已同步更新！", "success");
+            } else {
+              showStatus(`[${roundSelect.value}] 名單快取成功，輸入完全零延遲！`, "success");
+            }
+
+            if (currentPage === "rank") renderRankings();
+            else idInput.focus();
           }
         } catch (e) {
-          showStatus("連線失敗", "error");
-          nameInput.value = "";
+          showStatus("快取載入失敗，請檢查連線", "error");
+          idInput.placeholder = "載入失敗";
         } finally {
-          isFetching = false;
+          loader.classList.add("hidden");
         }
       }
 
-      // --- API：送出成績 ---
+      // --- ★ 改良核心：本機記憶體直接比對姓名 (0秒延遲) ---
+      idInput.oninput = () => {
+        const id = idInput.value.trim();
+        if (id.length === 2) {
+          // 直接從剛才載入的 JavaScript Object 尋找 key
+          if (competitorCache[id]) {
+            nameInput.value = competitorCache[id];
+            lastFetchedId = id;
+            solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = false;
+            solve1Input.focus();
+          } else {
+            nameInput.value = "查無此編號";
+            solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = true;
+          }
+        } else {
+          nameInput.value = "";
+          solve1Input.disabled = solve2Input.disabled = submitBtn.disabled = true;
+        }
+      };
+
+      // --- 渲染快取排行榜 (不需等待網路) ---
+      function renderRankings() {
+        const tbody = document.getElementById("rankTableBody");
+        tbody.innerHTML = "";
+        cachedRankList.forEach((item) => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-slate-50 hover:bg-slate-50";
+          const bestDisplay = item.best === 999999 ? "--" : item.best.toFixed(2);
+          tr.innerHTML = `
+          <td class="py-3 font-mono">${item.id}</td>
+          <td class="py-3 font-bold">${item.name}</td>
+          <td class="py-3 text-slate-400 font-mono">${item.t1}</td>
+          <td class="py-3 text-slate-400 font-mono">${item.t2}</td>
+          <td class="py-3 font-mono text-blue-600 font-bold">${bestDisplay}</td>
+        `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // --- 寫入成績 (維持同步 API 上傳) ---
       async function submitScores() {
         const t1 = formatScore(solve1Input.value);
         const t2 = formatScore(solve2Input.value);
@@ -286,15 +362,30 @@
         if (!t1 || !t2) return;
 
         submitBtn.disabled = true;
-        submitBtn.innerText = "寫入中...";
-        showStatus("正在寫入成績...", "info");
+        submitBtn.innerText = "資料寫入雲端中...";
+        showStatus("正在同步成績至 Google Sheet...", "info");
         solve1Input.disabled = solve2Input.disabled = true;
 
+        // 保存當前的 id 與 name 以供提示使用
+        const submittedId = idInput.value;
+        const submittedName = nameInput.value;
+
         try {
-          const res = await fetch(`${currentScriptUrl}?action=updateScore&sheet=${getSheetParam()}&id=${idInput.value}&t1=${t1}&t2=${t2}`);
+          const res = await fetch(`${currentScriptUrl}?action=updateScore&sheet=${getSheetParam()}&id=${submittedId}&t1=${t1}&t2=${t2}`);
           const result = await res.json();
           if (result.success) {
-            showStatus(`🎉 ${lastFetchedId}號 ${nameInput.value} 於 [${roundSelect.value}] 寫入成功！`, "success");
+            showStatus(`🎉 ${submittedId}號 ${submittedName} 成績上傳成功！`, "success");
+
+            // 更新本地排行榜快取資料，確保切換分頁時看到的是剛剛輸入的結果
+            const target = cachedRankList.find((c) => c.id == submittedId);
+            if (target) {
+              target.t1 = t1;
+              target.t2 = t2;
+              const b = Math.min(parseFloat(t1) || Infinity, parseFloat(t2) || Infinity);
+              target.best = b === Infinity ? 999999 : b;
+              cachedRankList.sort((a, b) => a.best - b.best);
+            }
+
             idInput.value = nameInput.value = solve1Input.value = solve2Input.value = "";
             lastFetchedId = "";
             idInput.focus();
@@ -303,7 +394,7 @@
             solve1Input.disabled = solve2Input.disabled = false;
           }
         } catch (e) {
-          showStatus("寫入失敗", "error");
+          showStatus("寫入失敗，請重試", "error");
           solve1Input.disabled = solve2Input.disabled = false;
         } finally {
           submitBtn.disabled = true;
@@ -311,65 +402,11 @@
         }
       }
 
-      // --- API：獲取排名數據 ---
-      async function fetchRankings() {
-        const tbody = document.getElementById("rankTableBody");
-        const loader = document.getElementById("rankLoader");
-        if (!currentScriptUrl || !roundSelect.value) {
-          tbody.innerHTML = "<tr><td colspan='5' class='text-center py-4 text-slate-400'>請先於上方設定比賽與分頁</td></tr>";
-          return;
-        }
-
-        tbody.innerHTML = "";
-        loader.classList.remove("hidden");
-
-        try {
-          const res = await fetch(`${currentScriptUrl}?action=getRankings&sheet=${getSheetParam()}`);
-          const result = await res.json();
-
-          if (result.success) {
-            let list = result.data.map((row) => {
-              const s1 = parseFloat(row[5]) || Infinity; // F欄: 初賽1
-              const s2 = parseFloat(row[6]) || Infinity; // G欄: 初賽2
-              const best = Math.min(s1, s2);
-              return {
-                id: row[0],
-                name: row[1],
-                t1: row[5] || "--",
-                t2: row[6] || "--",
-                best: best === Infinity ? 999999 : best,
-              };
-            });
-
-            list.sort((a, b) => a.best - b.best);
-
-            list.forEach((item) => {
-              const tr = document.createElement("tr");
-              tr.className = "border-b border-slate-50 hover:bg-slate-50";
-              const bestDisplay = item.best === 999999 ? "--" : item.best.toFixed(2);
-              tr.innerHTML = `
-              <td class="py-3 font-mono">${item.id}</td>
-              <td class="py-3 font-bold">${item.name}</td>
-              <td class="py-3 text-slate-400 font-mono">${item.t1}</td>
-              <td class="py-3 text-slate-400 font-mono">${item.t2}</td>
-              <td class="py-3 font-mono text-blue-600 font-bold">${bestDisplay}</td>
-            `;
-              tbody.appendChild(tr);
-            });
-          }
-        } catch (e) {
-          tbody.innerHTML = "<tr><td colspan='5' class='text-center py-4 text-red-500'>排名載入失敗</td></tr>";
-        } finally {
-          loader.classList.add("hidden");
-        }
-      }
-
-      // --- 鍵盤導航防呆邏輯 ---
+      // --- 鍵盤操作防呆 ---
       idInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
+        if (e.key === "Enter" && idInput.value.length === 2 && competitorCache[idInput.value.trim()]) {
           e.preventDefault();
-          if (idInput.value.length === 2 && idInput.value === lastFetchedId) solve1Input.focus();
-          else if (idInput.value.length === 2 && !isFetching) fetchName();
+          solve1Input.focus();
         }
       });
       solve1Input.onkeydown = (e) => {
